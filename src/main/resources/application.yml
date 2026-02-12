@@ -1,0 +1,101 @@
+spring:
+  application:
+    name: alang-backend
+
+  # Database configuration
+  datasource:
+    url: jdbc:postgresql://localhost:5432/alang
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+
+  # JPA/Hibernate configuration
+  jpa:
+    hibernate:
+      ddl-auto: validate # Use 'validate' in production, 'update' for development
+      # IMPORTANT: Use Flyway or Liquibase for migrations in production
+    show-sql: false # Set to true for debugging
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  # Security configuration
+  security:
+    # TODO: Configure JWT secret
+    # This should be in environment variables, NOT committed to git
+    jwt:
+      secret: ${JWT_SECRET:CHANGE_THIS_SECRET_KEY_IN_PRODUCTION}
+      expiration: 86400000 # 24 hours in milliseconds
+
+# LLM API configuration
+# TODO: Add your LLM provider configuration
+llm:
+  provider: openai # or "anthropic", "openrouter", etc.
+  api:
+    key: ${LLM_API_KEY:your-api-key-here}
+    baseUrl: ${LLM_API_BASE_URL:https://api.openai.com/v1}
+
+  # Model selection configuration
+  models:
+    cheap: gpt-3.5-turbo # For casual chat, brief responses
+    standard: gpt-4-turbo # For standard explanations
+    premium: gpt-4 # For detailed explanations, complex topics
+
+  # Cost control configuration
+  token-limits:
+    free-tier-monthly: 100000 # 100k tokens/month for free users
+    premium-tier-monthly: 1000000 # 1M tokens/month for premium users
+    per-request-max: 4000 # Max tokens per single request
+
+  # Summarization configuration
+  summarization:
+    message-threshold: 10 # Trigger summary after N messages
+    token-threshold: 2000 # Or when context exceeds N tokens
+
+# Application configuration
+app:
+  # CORS configuration (for React frontend)
+  cors:
+    allowed-origins: ${CORS_ORIGINS:http://localhost:3000,http://localhost:5173}
+    allowed-methods: GET,POST,PUT,PATCH,DELETE,OPTIONS
+
+  # Rate limiting (TODO: implement)
+  rate-limit:
+    requests-per-minute: 60
+    requests-per-hour: 1000
+
+# Logging configuration
+logging:
+  level:
+    com.alang: DEBUG # Change to INFO in production
+    org.springframework.web: INFO
+    org.hibernate.SQL: DEBUG # Set to INFO in production
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+
+# Server configuration
+server:
+  port: 8080
+  error:
+    include-message: always
+    include-stacktrace: on_param # Only include stacktrace when ?trace=true
+
+---
+# Production profile (activate with --spring.profiles.active=prod)
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  jpa:
+    hibernate:
+      ddl-auto: validate # NEVER use 'update' in production
+    show-sql: false
+
+  # Production logging
+logging:
+  level:
+    com.alang: INFO
+    org.springframework.web: WARN
+    org.hibernate.SQL: WARN
