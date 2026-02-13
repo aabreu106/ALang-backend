@@ -22,21 +22,21 @@ import java.util.List;
 public interface ConversationSummaryRepository extends JpaRepository<ConversationSummary, String> {
 
     /**
-     * Get recent summaries for a user in a specific language.
+     * Get recent summaries for a user in a specific learning language.
      * Ordered by creation time (newest first).
      *
      * Used when assembling context for LLM.
      */
-    List<ConversationSummary> findByUserAndLanguageOrderByCreatedAtDesc(
+    List<ConversationSummary> findByUserAndLearningLanguageOrderByCreatedAtDesc(
         User user,
-        Language language,
+        Language learningLanguage,
         Pageable pageable
     );
 
     /**
-     * Get all summaries for a user and language (for history view).
+     * Get all summaries for a user and learning language (for history view).
      */
-    List<ConversationSummary> findByUserAndLanguageOrderByCreatedAtDesc(User user, Language language);
+    List<ConversationSummary> findByUserAndLearningLanguageOrderByCreatedAtDesc(User user, Language learningLanguage);
 
     /**
      * Count summaries for analytics.

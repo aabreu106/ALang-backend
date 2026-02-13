@@ -1,7 +1,6 @@
 package com.alang.dto.note;
 
 import lombok.Data;
-import java.util.List;
 
 /**
  * Request DTO for PATCH /notes/{id}
@@ -11,11 +10,6 @@ import java.util.List;
 public class UpdateNoteRequest {
     private String title;
     private String summary;
-    private String detailedExplanation;
-    private List<String> examples;
+    private String noteContent;
 
-    /**
-     * User can manually adjust confidence if they think note is accurate
-     */
-    private Double confidence;
 }

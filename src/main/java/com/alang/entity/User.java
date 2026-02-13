@@ -2,9 +2,11 @@ package com.alang.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * User entity.
@@ -33,16 +35,18 @@ public class User {
     private String displayName;
 
     /**
-     * Languages the user is learning.
-     * TODO: Implement many-to-many relationship with Language entity
+     * The language used for UI and LLM explanations.
+     * e.g., "ja" means the user receives explanations in Japanese.
      */
-    @ElementCollection
-    private Set<String> targetLanguageCodes = new HashSet<>();
+    @Column(nullable = false)
+    private String appLanguageCode;
 
     /**
-     * Default language for new conversations
+     * Languages the user is learning, stored as a PostgreSQL array.
      */
-    private String preferredLanguageCode;
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(columnDefinition = "VARCHAR(255)[]")
+    private List<String> targetLanguageCodes = new ArrayList<>();
 
     /**
      * Token usage tracking for cost control
@@ -51,11 +55,9 @@ public class User {
     private Long totalTokensUsed = 0L;
     private LocalDateTime lastTokenResetDate; // For monthly limits
 
-    /**
-     * Premium tier (for future monetization)
-     * TODO: Implement subscription/tier system
-     */
-    private String tier = "free"; // "free", "premium"
+    @Enumerated(EnumType.STRING)
+    @Column(columnDefinition = "user_tier")
+    private UserTier tier = UserTier.free;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;

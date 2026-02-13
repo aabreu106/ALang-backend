@@ -26,20 +26,20 @@ import java.util.List;
 public interface RecentMessageRepository extends JpaRepository<RecentMessage, String> {
 
     /**
-     * Get recent messages for a user in a specific language.
+     * Get recent messages for a user in a specific learning language.
      * Ordered by creation time (oldest first for context assembly).
      */
-    List<RecentMessage> findByUserAndLanguageOrderByCreatedAtAsc(
+    List<RecentMessage> findByUserAndLearningLanguageOrderByCreatedAtAsc(
         User user,
-        Language language,
+        Language learningLanguage,
         Pageable pageable
     );
 
     /**
-     * Get recent messages for a user and language (all, not paginated).
+     * Get recent messages for a user and learning language (all, not paginated).
      * Used when generating summaries.
      */
-    List<RecentMessage> findByUserAndLanguageOrderByCreatedAtAsc(User user, Language language);
+    List<RecentMessage> findByUserAndLearningLanguageOrderByCreatedAtAsc(User user, Language learningLanguage);
 
     /**
      * Delete expired messages (for TTL cleanup).
@@ -52,19 +52,19 @@ public interface RecentMessageRepository extends JpaRepository<RecentMessage, St
     void deleteExpiredMessages(LocalDateTime now);
 
     /**
-     * Delete messages for a user and language (after summarization).
+     * Delete messages for a user and learning language (after summarization).
      */
     @Modifying
-    void deleteByUserAndLanguage(User user, Language language);
+    void deleteByUserAndLearningLanguage(User user, Language learningLanguage);
 
     /**
      * Delete messages created before a certain time (for cleanup after summarization).
      */
     @Modifying
-    void deleteByUserAndLanguageAndCreatedAtBefore(User user, Language language, LocalDateTime before);
+    void deleteByUserAndLearningLanguageAndCreatedAtBefore(User user, Language learningLanguage, LocalDateTime before);
 
     /**
-     * Count messages for a user and language (to check summarization threshold).
+     * Count messages for a user and learning language (to check summarization threshold).
      */
-    long countByUserAndLanguage(User user, Language language);
+    long countByUserAndLearningLanguage(User user, Language learningLanguage);
 }

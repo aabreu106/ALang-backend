@@ -1,5 +1,6 @@
 package com.alang.dto.note;
 
+import com.alang.entity.NoteType;
 import lombok.Data;
 
 /**
@@ -9,17 +10,8 @@ import lombok.Data;
 @Data
 public class NotePreviewDto {
     private String id;
-    private String type; // "vocab", "grammar", "exception"
+    private NoteType type;
     private String title; // e.g., "は vs が"
 
-    /**
-     * Confidence score (0.0 to 1.0) indicating how confident the LLM is about this note.
-     * Low confidence notes should be flagged for user review.
-     *
-     * ARCHITECTURAL NOTE:
-     * - Extracted by LLMService from LLM response metadata
-     * - Low confidence (<0.3) = needs review
-     * - High confidence (>0.7) = probably accurate
-     */
-    private Double confidence;
+    private Integer intervalDays; // derived mastery indicator from SM-2
 }

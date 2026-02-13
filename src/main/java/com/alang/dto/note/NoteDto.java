@@ -1,5 +1,6 @@
 package com.alang.dto.note;
 
+import com.alang.entity.NoteType;
 import lombok.Data;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -10,29 +11,19 @@ import java.util.List;
 @Data
 public class NoteDto {
     private String id;
-    private String type; // "vocab", "grammar", "exception"
-    private String language; // "ja", "es", etc.
+    private NoteType type;
+    private String teachingLanguage; // language the note explains in
+    private String learningLanguage; // language being taught/explained
 
     private String title; // e.g., "Difference between は and が"
     private String summary; // Short explanation (1-2 sentences)
-    private String detailedExplanation; // Longer explanation if available
-
-    /**
-     * Concrete examples showing usage
-     * Example: ["私は学生です (I am a student)", "誰が来ましたか (Who came?)"]
-     */
-    private List<String> examples;
+    private String noteContent; // Longer explanation if available
 
     /**
      * Related notes (by ID)
      * Example: Related grammar points, similar vocabulary
      */
     private List<String> relatedNoteIds;
-
-    /**
-     * Confidence score from extraction
-     */
-    private Double confidence;
 
     /**
      * User can manually override/edit notes
