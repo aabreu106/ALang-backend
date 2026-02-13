@@ -46,8 +46,12 @@ public class ConversationSummary {
     private User user;
 
     @ManyToOne
-    @JoinColumn(name = "language_code", nullable = false)
-    private Language language;
+    @JoinColumn(name = "teaching_language_code", nullable = false)
+    private Language teachingLanguage;
+
+    @ManyToOne
+    @JoinColumn(name = "learning_language_code", nullable = false)
+    private Language learningLanguage;
 
     /**
      * The condensed summary text (1-3 paragraphs)
@@ -55,12 +59,6 @@ public class ConversationSummary {
     @Column(columnDefinition = "TEXT", nullable = false)
     private String summaryText;
 
-    /**
-     * Key topics covered (for quick search/filtering)
-     */
-    @ElementCollection
-    @CollectionTable(name = "summary_topics")
-    private java.util.List<String> topics;
 
     /**
      * How many actual message exchanges does this summary represent?

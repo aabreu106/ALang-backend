@@ -29,18 +29,22 @@ public class Note {
     private User user;
 
     /**
-     * Language this note is about
+     * The language the note explains in (e.g., English for an English-speaking user)
      */
     @ManyToOne
-    @JoinColumn(name = "language_code", nullable = false)
-    private Language language;
+    @JoinColumn(name = "teaching_language_code", nullable = false)
+    private Language teachingLanguage;
 
     /**
-     * Note type: "vocab", "grammar", "exception"
-     * "exception" = special cases, idioms, irregular forms
+     * The language being taught/explained (e.g., Japanese if learning Japanese)
      */
-    @Column(nullable = false)
-    private String type;
+    @ManyToOne
+    @JoinColumn(name = "learning_language_code", nullable = false)
+    private Language learningLanguage;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, columnDefinition = "note_type")
+    private NoteType type;
 
     @Column(nullable = false)
     private String title;
@@ -49,22 +53,8 @@ public class Note {
     private String summary;
 
     @Column(columnDefinition = "TEXT")
-    private String detailedExplanation;
+    private String noteContent;
 
-    /**
-     * Examples demonstrating usage
-     * TODO: Consider separate Example entity for better querying
-     */
-    @ElementCollection
-    @CollectionTable(name = "note_examples")
-    private java.util.List<String> examples;
-
-    /**
-     * Confidence score (0.0 to 1.0) from LLM extraction
-     * Low confidence notes should be flagged for user review
-     */
-    @Column(nullable = false)
-    private Double confidence;
 
     /**
      * Has the user manually edited this note?

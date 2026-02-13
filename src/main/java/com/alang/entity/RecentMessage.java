@@ -42,8 +42,12 @@ public class RecentMessage {
     private User user;
 
     @ManyToOne
-    @JoinColumn(name = "language_code", nullable = false)
-    private Language language;
+    @JoinColumn(name = "teaching_language_code", nullable = false)
+    private Language teachingLanguage;
+
+    @ManyToOne
+    @JoinColumn(name = "learning_language_code", nullable = false)
+    private Language learningLanguage;
 
     /**
      * "user" or "assistant"

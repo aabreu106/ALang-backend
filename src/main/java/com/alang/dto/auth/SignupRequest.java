@@ -4,6 +4,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
+import java.util.List;
 
 @Data
 public class SignupRequest {
@@ -18,6 +19,10 @@ public class SignupRequest {
     @NotBlank
     private String displayName;
 
-    // Primary language they're learning
-    private String targetLanguageCode; // e.g., "ja", "es"
+    // The language used for UI and LLM explanations
+    @NotBlank
+    private String appLanguageCode; // e.g., "en", "ja"
+
+    // Languages the user wants to learn
+    private List<String> targetLanguageCodes; // e.g., ["ja", "es"]
 }

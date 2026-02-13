@@ -1,19 +1,22 @@
 spring:
   application:
     name: alang-backend
-
   # Database configuration
   datasource:
     url: jdbc:postgresql://localhost:5432/alang
-    username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:postgres}
+    username: postgres #TODO - use environment variables for DB credentials in production
+    password: postgres
     driver-class-name: org.postgresql.Driver
+
+  # Flyway database migrations
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
 
   # JPA/Hibernate configuration
   jpa:
     hibernate:
-      ddl-auto: validate # Use 'validate' in production, 'update' for development
-      # IMPORTANT: Use Flyway or Liquibase for migrations in production
+      ddl-auto: validate # Flyway manages schema; Hibernate validates it matches entities
     show-sql: false # Set to true for debugging
     properties:
       hibernate:

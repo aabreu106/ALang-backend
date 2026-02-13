@@ -1,6 +1,7 @@
 package com.alang.repository;
 
 import com.alang.entity.Note;
+import com.alang.entity.NoteType;
 import com.alang.entity.User;
 import com.alang.entity.Language;
 import org.springframework.data.domain.Page;
@@ -28,19 +29,14 @@ public interface NoteRepository extends JpaRepository<Note, String> {
     Page<Note> findByUser(User user, Pageable pageable);
 
     /**
-     * Find notes by user and language.
+     * Find notes by user and learning language.
      */
-    Page<Note> findByUserAndLanguage(User user, Language language, Pageable pageable);
+    Page<Note> findByUserAndLearningLanguage(User user, Language language, Pageable pageable);
 
     /**
-     * Find notes by user, language, and type.
+     * Find notes by user, learning language, and type.
      */
-    Page<Note> findByUserAndLanguageAndType(User user, Language language, String type, Pageable pageable);
-
-    /**
-     * Find notes with confidence >= threshold.
-     */
-    Page<Note> findByUserAndConfidenceGreaterThanEqual(User user, Double confidence, Pageable pageable);
+    Page<Note> findByUserAndLearningLanguageAndType(User user, Language language, NoteType type, Pageable pageable);
 
     /**
      * Find note by ID and user (for authorization check).
