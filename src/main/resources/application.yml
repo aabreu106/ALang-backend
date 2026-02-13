@@ -1,6 +1,8 @@
 spring:
   application:
     name: alang-backend
+  autoconfigure:
+    exclude: org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
   # Database configuration
   datasource:
     url: jdbc:postgresql://localhost:5432/alang

@@ -55,7 +55,7 @@ public class User {
     private Long totalTokensUsed = 0L;
     private LocalDateTime lastTokenResetDate; // For monthly limits
 
-    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(columnDefinition = "user_tier")
     private UserTier tier = UserTier.free;
 

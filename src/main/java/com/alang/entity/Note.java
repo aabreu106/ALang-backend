@@ -2,6 +2,8 @@ package com.alang.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
 
 /**
@@ -42,7 +44,7 @@ public class Note {
     @JoinColumn(name = "learning_language_code", nullable = false)
     private Language learningLanguage;
 
-    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(nullable = false, columnDefinition = "note_type")
     private NoteType type;
 

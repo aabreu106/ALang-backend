@@ -43,14 +43,27 @@ public class GlobalExceptionHandler {
     /**
      * Handle authentication errors.
      */
-    @ExceptionHandler(InvalidCredentialsException.class)
-    public ResponseEntity<ErrorResponse> handleInvalidCredentials(InvalidCredentialsException ex) {
+    @ExceptionHandler({InvalidCredentialsException.class, InvalidTokenException.class})
+    public ResponseEntity<ErrorResponse> handleAuthentication(RuntimeException ex) {
         ErrorResponse response = new ErrorResponse(
             ex.getMessage(),
             null,
             LocalDateTime.now()
         );
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+    }
+
+    /**
+     * Handle duplicate email on signup.
+     */
+    @ExceptionHandler(EmailAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponse> handleEmailAlreadyExists(EmailAlreadyExistsException ex) {
+        ErrorResponse response = new ErrorResponse(
+            ex.getMessage(),
+            null,
+            LocalDateTime.now()
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
 
     /**

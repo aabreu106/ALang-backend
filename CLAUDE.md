@@ -52,7 +52,7 @@ GET  /meta/languages       GET  /meta/starter-prompts
 
 ## Current Status
 
-Week 1 in progress. Flyway migrations (V1 schema + V2 seed data) are complete. JWT auth implementation is next.
+Week 1 complete. Week 2 (LLM Integration) is next.
 
 ---
 
@@ -68,16 +68,16 @@ Goal: Database running, auth working end-to-end.
    - [x] Create V2__seed_languages.sql (9 languages)
    - [x] Verify migrations run against local PostgreSQL
 
-2. **JWT authentication**
-   - [ ] Create `JwtTokenProvider` (generate token, validate token, extract user ID)
-   - [ ] Create `JwtAuthenticationFilter` (reads Authorization header, sets SecurityContext)
-   - [ ] Create `AuthServiceImpl` (signup with BCrypt, login, getCurrentUser)
-   - [ ] Wire JWT filter into `SecurityConfig` (public: `/auth/**`, `/meta/**`; protected: everything else)
-   - [ ] Wire `AuthController` to call `AuthService` (remove stub exceptions)
+2. **JWT authentication** ✅
+   - [x] Create `JwtTokenProvider` (generate token, validate token, extract user ID)
+   - [x] Create `JwtAuthenticationFilter` (reads Authorization header, sets SecurityContext)
+   - [x] Create `AuthServiceImpl` (signup with BCrypt, login, getCurrentUser)
+   - [x] Wire JWT filter into `SecurityConfig` (public: `/auth/**`, `/meta/**`; protected: everything else)
+   - [x] Wire `AuthController` to call `AuthService` (remove stub exceptions)
 
-3. **Basic testing**
-   - [ ] Test JWT generation/validation
-   - [ ] Test signup → login → access protected endpoint flow
+3. **Basic testing** ✅
+   - [x] Test JWT generation/validation
+   - [x] Test signup → login → access protected endpoint flow
 
 ### Week 2 — LLM Integration
 
@@ -169,6 +169,7 @@ Goal: Secure, observable, documented, deployable.
    - [ ] Audit all endpoints for proper authorization checks
    - [ ] Validate all user inputs (request body sizes, string lengths)
    - [ ] Implement rate limiting (per-user request throttling)
+   - [ ] Add refresh tokens (`refresh_tokens` table, `POST /auth/refresh` endpoint, rotate on use)
    - [ ] Move all secrets to environment variables
    - [ ] Enforce HTTPS
 
