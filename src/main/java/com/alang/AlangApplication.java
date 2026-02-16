@@ -1,7 +1,9 @@
 package com.alang;
 
+import com.alang.config.LLMProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 
 /**
  * Main application entry point for ALang language learning backend.
@@ -19,6 +21,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * 4. Chat history is SUMMARIZED, not stored raw
  */
 @SpringBootApplication
+@EnableConfigurationProperties(LLMProperties.class)
 public class AlangApplication {
     public static void main(String[] args) {
         SpringApplication.run(AlangApplication.class, args);

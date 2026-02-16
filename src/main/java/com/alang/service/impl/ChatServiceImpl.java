@@ -3,70 +3,93 @@ package com.alang.service.impl;
 import com.alang.dto.chat.ChatHistoryDto;
 import com.alang.dto.chat.ChatMessageRequest;
 import com.alang.dto.chat.ChatMessageResponse;
+import com.alang.entity.Language;
+import com.alang.entity.RecentMessage;
+import com.alang.entity.User;
+import com.alang.exception.UserNotFoundException;
+import com.alang.repository.LanguageRepository;
+import com.alang.repository.RecentMessageRepository;
+import com.alang.repository.UserRepository;
 import com.alang.service.ChatService;
 import com.alang.service.LLMService;
-import com.alang.service.NoteService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Chat service implementation.
- *
- * TODO: Inject repositories
- * TODO: Inject LLMService, NoteService
- * TODO: Implement transaction management
- * TODO: Add error handling
- */
+import java.util.ArrayList;
+
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class ChatServiceImpl implements ChatService {
 
-    // TODO: Inject dependencies
-    // private final LLMService llmService;
-    // private final NoteService noteService;
-    // private final RecentMessageRepository messageRepository;
-    // private final ConversationSummaryRepository summaryRepository;
-    // private final UserRepository userRepository;
+    private final LLMService llmService;
+    private final UserRepository userRepository;
+    private final LanguageRepository languageRepository;
+    private final RecentMessageRepository recentMessageRepository;
 
     @Override
+    @Transactional
     public ChatMessageResponse sendMessage(ChatMessageRequest request, String userId) {
-        // TODO: Implement message sending
-        // 1. Validate request
-        // 2. Save user message to RecentMessage
-        // 3. Call llmService.generateReply()
-        // 4. Save assistant reply to RecentMessage
-        // 5. Extract and save notes
-        // 6. Check if summarization needed
-        // 7. Return response
-        throw new UnsupportedOperationException("TODO: Implement chat message handling");
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException(userId));
+
+        Language teachingLanguage = languageRepository.findById(user.getAppLanguageCode())
+                .orElseThrow(() -> new IllegalStateException("Teaching language not found: " + user.getAppLanguageCode()));
+        Language learningLanguage = languageRepository.findById(request.getLanguage())
+                .orElseThrow(() -> new IllegalArgumentException("Language not supported: " + request.getLanguage()));
+
+        // 1. Save user's message
+        RecentMessage userMessage = new RecentMessage();
+        userMessage.setUser(user);
+        userMessage.setTeachingLanguage(teachingLanguage);
+        userMessage.setLearningLanguage(learningLanguage);
+        userMessage.setRole("user");
+        userMessage.setContent(request.getMessage());
+        recentMessageRepository.save(userMessage);
+
+        // 2. Call LLM for reply
+        LLMService.LLMResponse llmResponse = llmService.generateReply(request, userId);
+
+        // 3. Save assistant's reply
+        RecentMessage assistantMessage = new RecentMessage();
+        assistantMessage.setUser(user);
+        assistantMessage.setTeachingLanguage(teachingLanguage);
+        assistantMessage.setLearningLanguage(learningLanguage);
+        assistantMessage.setRole("assistant");
+        assistantMessage.setContent(llmResponse.getReply());
+        assistantMessage.setModelUsed(llmResponse.getModelUsed());
+        assistantMessage.setTokenCount(llmResponse.getTokenUsage().getTotalTokens());
+        recentMessageRepository.save(assistantMessage);
+
+        log.info("Chat exchange saved: userId={}, language={}, model={}",
+                userId, request.getLanguage(), llmResponse.getModelUsed());
+
+        // 4. Build response
+        ChatMessageResponse response = new ChatMessageResponse();
+        response.setReply(llmResponse.getReply());
+        response.setTokenUsage(llmResponse.getTokenUsage());
+        response.setModelUsed(llmResponse.getModelUsed());
+        response.setCreatedNotes(new ArrayList<>()); // TODO: Note extraction (Week 3)
+        return response;
     }
 
     @Override
     public ChatHistoryDto getHistory(String userId, String language, int limit) {
-        // TODO: Implement history retrieval
-        // 1. Load conversation summaries
-        // 2. Load recent messages
-        // 3. Map to DTOs
-        // 4. Return ChatHistoryDto
+        // TODO: Implement history retrieval (Week 4)
         throw new UnsupportedOperationException("TODO: Implement history retrieval");
     }
 
     @Override
     public boolean shouldTriggerSummarization(String userId, String language) {
-        // TODO: Implement summarization trigger logic
-        // 1. Count unsummarized messages
-        // 2. Check if count >= threshold (e.g., 10)
-        // 3. Or check if token count >= threshold
-        // 4. Return true/false
+        // TODO: Implement summarization trigger logic (Week 4)
         return false;
     }
 
     @Override
     public void triggerSummarization(String userId, String language) {
-        // TODO: Implement summarization
-        // 1. Load unsummarized messages
-        // 2. Call llmService.generateSummary()
-        // 3. Save summary
-        // 4. Delete old messages
-        // 5. Log event
+        // TODO: Implement summarization (Week 4)
         throw new UnsupportedOperationException("TODO: Implement summarization");
     }
 }

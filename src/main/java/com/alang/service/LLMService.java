@@ -21,7 +21,7 @@ import java.util.List;
  * 2. MODEL SELECTION: Choose cheap vs premium model based on request
  * 3. PROMPT ENGINEERING: Centralized prompt templates and optimization
  * 4. TOKEN ACCOUNTING: Track usage for billing, analytics, limits
- * 5. PROVIDER ABSTRACTION: Can switch from OpenAI to Anthropic without touching controllers
+ * 5. PROVIDER ABSTRACTION: Can switch providers (Ollama, OpenAI, Anthropic, etc.) without touching controllers
  * 6. TESTING: Easy to mock this service in tests
  * 7. MONITORING: Single place to log, trace, and alert on LLM usage
  *

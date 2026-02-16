@@ -83,17 +83,17 @@ Goal: Database running, auth working end-to-end.
 
 Goal: Chat endpoint returns real LLM responses.
 
-1. **LLM service implementation**
-   - [ ] Add HTTP client (WebClient) for LLM API calls
-   - [ ] Design prompt templates (system prompt with language tutor role)
-   - [ ] Implement `LLMServiceImpl.generateReply()`
-   - [ ] Implement `LLMServiceImpl.selectModel()` (cheap vs premium based on intent/depth/tier)
-   - [ ] Add error handling (rate limits, timeouts, retries with backoff)
+1. **LLM service implementation** ✅
+   - [x] Add HTTP client (WebClient) for LLM API calls
+   - [x] Design prompt templates (system prompt with language tutor role)
+   - [x] Implement `LLMServiceImpl.generateReply()`
+   - [x] Implement `LLMServiceImpl.selectModel()` (cheap vs premium based on intent/depth/tier)
+   - [x] Add error handling (rate limits, timeouts, retries with backoff)
 
-2. **Chat service implementation**
-   - [ ] Complete `ChatServiceImpl.sendMessage()` (save message → call LLM → save reply → return response)
-   - [ ] Implement message saving to `RecentMessage` table
-   - [ ] Wire up `ChatController` to call `ChatService`
+2. **Chat service implementation** ✅
+   - [x] Complete `ChatServiceImpl.sendMessage()` (save message → call LLM → save reply → return response)
+   - [x] Implement message saving to `RecentMessage` table
+   - [x] Wire up `ChatController` to call `ChatService`
 
 3. **Token tracking**
    - [ ] Implement `countTokens()` (approximate or tiktoken)
