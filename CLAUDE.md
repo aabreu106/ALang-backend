@@ -95,10 +95,10 @@ Goal: Chat endpoint returns real LLM responses.
    - [x] Implement message saving to `RecentMessage` table
    - [x] Wire up `ChatController` to call `ChatService`
 
-3. **Token tracking**
-   - [ ] Implement `countTokens()` (approximate or tiktoken)
-   - [ ] Implement `recordTokenUsage()` (increment user's monthly total)
-   - [ ] Implement `checkTokenBudget()` (enforce free/premium tier limits)
+3. **Token tracking** ✅
+   - [x] Implement `countTokens()` (approximate or tiktoken)
+   - [x] Implement `recordTokenUsage()` (increment user's monthly total)
+   - [x] Implement `checkTokenBudget()` (enforce free/premium tier limits)
 
 ### Week 3 — Note Extraction
 

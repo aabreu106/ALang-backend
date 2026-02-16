@@ -64,7 +64,7 @@ public interface LLMService {
      * - Never drop recent messages (they're critical for coherence)
      *
      * TOKEN BUDGET ENFORCEMENT (TODO: implement in impl):
-     * - Check user.totalTokensUsed against monthly limit
+     * - Check user.totalDailyTokensUsed against daily limit
      * - Free tier: 100k tokens/month
      * - Premium tier: 1M tokens/month
      * - Reject request if over limit (or auto-downgrade to cheap model)

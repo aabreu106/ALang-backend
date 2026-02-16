@@ -10,6 +10,7 @@ import com.alang.entity.RecentMessage;
 import com.alang.entity.User;
 import com.alang.entity.UserTier;
 import com.alang.exception.LLMProviderException;
+import com.alang.exception.RateLimitExceededException;
 import com.alang.exception.UserNotFoundException;
 import com.alang.repository.ConversationSummaryRepository;
 import com.alang.repository.LanguageRepository;
@@ -24,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -51,8 +53,14 @@ public class LLMServiceImpl implements LLMService {
                 .orElseThrow(() -> new UserNotFoundException(userId));
 
         String model = selectModelForUser(request, user);
+
+        Language appLanguage = languageRepository.findById(user.getAppLanguageCode())
+                .orElseThrow(() -> new IllegalStateException("App language not found: " + user.getAppLanguageCode()));
+        Language targetLanguage = languageRepository.findById(request.getLanguage())
+                .orElseThrow(() -> new IllegalArgumentException("Language not supported: " + request.getLanguage()));
+
         String systemPrompt = promptTemplates.buildChatSystemPrompt(
-                user.getAppLanguageCode(), request.getLanguage());
+                appLanguage.getName(), targetLanguage.getName());
 
         List<Map<String, String>> messages = new ArrayList<>();
 
@@ -62,6 +70,17 @@ public class LLMServiceImpl implements LLMService {
         }
 
         messages.add(Map.of("role", "user", "content", request.getMessage()));
+
+        // Estimate token usage and check budget before calling LLM
+        int estimatedTokens = countTokens(systemPrompt, model);
+        for (Map<String, String> msg : messages) {
+            estimatedTokens += countTokens(msg.get("content"), model);
+        }
+        if (!checkTokenBudget(userId, estimatedTokens)) {
+            long remaining = Math.max(0, getDailyLimit(user) - user.getTotalDailyTokensUsed());
+            throw new RateLimitExceededException(
+                    "Daily token limit exceeded. Please try again tomorrow.", remaining);
+        }
 
         LLMApiResponse apiResponse = callLLMApi(model, systemPrompt, messages);
 
@@ -85,20 +104,42 @@ public class LLMServiceImpl implements LLMService {
 
     @Override
     public int countTokens(String text, String model) {
-        // TODO: Implement token counting (Week 2, Task 3)
-        throw new UnsupportedOperationException("TODO: Implement token counting");
+        if (text == null || text.isEmpty()) {
+            return 0;
+        }
+        // TODO: Replace with a real tokenizer library (e.g., jtokkit) that uses the model param
+        // to select the correct encoding. Current approximation: 1 token ≈ 4 characters.
+        return (int) Math.ceil(text.length() / 4.0);
     }
 
     @Override
     public boolean checkTokenBudget(String userId, int estimatedTokens) {
-        // TODO: Implement token budget checking (Week 2, Task 3)
-        throw new UnsupportedOperationException("TODO: Implement token budget checking");
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException(userId));
+        // TODO: Implement daily reset specific to user timezone
+        // Reset daily token count if the last reset was before today
+        LocalDate today = LocalDate.now();
+        if (user.getLastTokenResetDate() == null
+                || user.getLastTokenResetDate().toLocalDate().isBefore(today)) {
+            user.setTotalDailyTokensUsed(0L);
+            user.setLastTokenResetDate(today.atStartOfDay());
+            userRepository.save(user);
+        }
+
+        return (user.getTotalDailyTokensUsed() + estimatedTokens) <= getDailyLimit(user);
     }
 
     @Override
     public void recordTokenUsage(String userId, TokenUsageDto tokenUsage) {
-        // TODO: Implement token usage recording (Week 2, Task 3)
-        throw new UnsupportedOperationException("TODO: Implement token usage recording");
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException(userId));
+
+        long current = user.getTotalDailyTokensUsed() != null ? user.getTotalDailyTokensUsed() : 0L;
+        user.setTotalDailyTokensUsed(current + tokenUsage.getTotalTokens());
+        userRepository.save(user);
+
+        log.info("Recorded token usage: userId={}, tokens={}, totalUsed={}",
+                userId, tokenUsage.getTotalTokens(), user.getTotalDailyTokensUsed());
     }
 
     @Override
@@ -129,6 +170,12 @@ public class LLMServiceImpl implements LLMService {
             return models.getStandard();
         }
         return models.getCheap();
+    }
+
+    private int getDailyLimit(User user) {
+        return (user.getTier() == UserTier.pro)
+                ? llmProperties.getTokenLimits().getProTierDaily()
+                : llmProperties.getTokenLimits().getFreeTierDaily();
     }
 
     // ---- Private helpers ----
