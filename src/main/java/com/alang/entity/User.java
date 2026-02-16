@@ -52,7 +52,7 @@ public class User {
      * Token usage tracking for cost control
      * TODO: Implement separate TokenUsage table for detailed tracking
      */
-    private Long totalTokensUsed = 0L;
+    private Long totalDailyTokensUsed = 0L;
     private LocalDateTime lastTokenResetDate; // For monthly limits
 
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)

@@ -52,6 +52,9 @@ public class ChatServiceImpl implements ChatService {
         // 2. Call LLM for reply
         LLMService.LLMResponse llmResponse = llmService.generateReply(request, userId);
 
+        // 2b. Record token usage against user's daily budget
+        llmService.recordTokenUsage(userId, llmResponse.getTokenUsage());
+
         // 3. Save assistant's reply
         RecentMessage assistantMessage = new RecentMessage();
         assistantMessage.setUser(user);

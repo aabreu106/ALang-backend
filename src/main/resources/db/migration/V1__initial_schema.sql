@@ -30,7 +30,7 @@ CREATE TABLE users (
     display_name            VARCHAR(255) NOT NULL,
     app_language_code       VARCHAR(255) NOT NULL, -- language used for UI/LLM explanations
     target_language_codes   VARCHAR(255)[] DEFAULT '{}', -- languages the user is learning
-    total_tokens_used       BIGINT       DEFAULT 0,
+    total_daily_tokens_used BIGINT       DEFAULT 0,
     last_token_reset_date   TIMESTAMP,
     tier                    user_tier    DEFAULT 'free',
     created_at              TIMESTAMP    NOT NULL,

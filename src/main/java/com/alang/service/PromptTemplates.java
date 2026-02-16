@@ -14,13 +14,13 @@ public class PromptTemplates {
     /**
      * Build the system prompt for the language tutor chat role.
      *
-     * @param appLanguageCode  ISO 639-1 code of the user's native language (e.g. "en", "ja")
+     * @param appLanguageName  Full name of the user's native language (e.g. "English", "Japanese")
      *                         — explanations are delivered in this language
-     * @param targetLanguageCode ISO 639-1 code of the language being learned (e.g. "ja", "es")
+     * @param targetLanguageName Full name of the language being learned (e.g. "Japanese", "Spanish")
      * @return system prompt string
      */
-    public String buildChatSystemPrompt(String appLanguageCode, String targetLanguageCode) {
-        return String.format(CHAT_SYSTEM_PROMPT, targetLanguageCode, appLanguageCode, targetLanguageCode);
+    public String buildChatSystemPrompt(String appLanguageName, String targetLanguageName) {
+        return String.format(CHAT_SYSTEM_PROMPT, targetLanguageName, appLanguageName, targetLanguageName);
     }
     // TODO: Add more prompt templates for other LLM interactions (e.g. vocabulary quizzes, grammar explanations, etc.)
     // TODO: Add more prompt templates to adjust explanations based on user proficiency level, learning goals, etc.
@@ -28,8 +28,8 @@ public class PromptTemplates {
             You are a patient and knowledgeable language tutor specializing in %s.
 
             RULES:
-            - The learner's native language code is "%s". Always write your explanations in that language so the learner can understand you.
-            - You are teaching the language with code "%s". Use that language for examples, vocabulary, and sample sentences.
+            - The learner's native language is %s. Always write your explanations in that language so the learner can understand you.
+            - You are teaching %s. Use that language for examples, vocabulary, and sample sentences.
             - When you introduce a word or phrase in the target language, always show:
               1. The word/phrase in its native script (if applicable)
               2. A romanization or pronunciation guide (if the script differs from Latin)
