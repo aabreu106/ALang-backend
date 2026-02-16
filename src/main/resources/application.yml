@@ -34,23 +34,33 @@ spring:
       expiration: 86400000 # 24 hours in milliseconds
 
 # LLM API configuration
-# TODO: Add your LLM provider configuration
-llm:
-  provider: openai # or "anthropic", "openrouter", etc.
-  api:
-    key: ${LLM_API_KEY:your-api-key-here}
-    baseUrl: ${LLM_API_BASE_URL:https://api.openai.com/v1}
+# Using Ollama for local development (run: ollama pull qwen3 && ollama serve)
+# OpenAI config preserved below for when we switch to a cloud provider
 
-  # Model selection configuration
+llm:
+  provider: openai
+  api:
+    key: ${LLM_API_KEY}
+    baseUrl: ${LLM_API_BASE_URL:https://api.openai.com/v1}
   models:
-    cheap: gpt-3.5-turbo # For casual chat, brief responses
-    standard: gpt-4-turbo # For standard explanations
-    premium: gpt-4 # For detailed explanations, complex topics
+    cheap: gpt-3.5-turbo
+    standard: gpt-3.5-turbo #gpt-4-turbo
+    premium: gpt-3.5-turbo #gpt-4
+  # provider: ollama
+  # api:
+  #   key: ollama # Ollama doesn't require a key, but the field is required
+  #   baseUrl: ${LLM_API_BASE_URL:http://localhost:11434/v1}
+
+  # # Model selection configuration
+  # models:
+  #   cheap: huihui_ai/hunyuan-mt-abliterated # For casual chat, brief responses
+  #   standard: huihui_ai/hunyuan-mt-abliterated # For standard explanations
+  #   premium: huihui_ai/hunyuan-mt-abliterated # For detailed explanations, complex topics
 
   # Cost control configuration
   token-limits:
-    free-tier-monthly: 100000 # 100k tokens/month for free users
-    premium-tier-monthly: 1000000 # 1M tokens/month for premium users
+    free-tier-daily: 3500 # ~3.5k tokens/day for free users
+    pro-tier-daily: 35000 # ~35k tokens/day for pro users
     per-request-max: 4000 # Max tokens per single request
 
   # Summarization configuration
