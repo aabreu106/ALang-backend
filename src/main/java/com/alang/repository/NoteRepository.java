@@ -62,7 +62,14 @@ public interface NoteRepository extends JpaRepository<Note, String> {
            "LOWER(n.summary) LIKE LOWER(CONCAT('%', :search, '%')))")
     Page<Note> searchNotes(@Param("user") User user, @Param("search") String search, Pageable pageable);
 
-    // TODO: Add method to find similar notes (for de-duplication)
-    // This would require fuzzy matching or embedding similarity
-    // For MVP, can use simple title similarity
+    /**
+     * Find notes with matching or similar titles for de-duplication.
+     * Uses case-insensitive LIKE match on title.
+     */
+    @Query("SELECT n FROM Note n WHERE n.user = :user AND n.learningLanguage = :language " +
+           "AND LOWER(n.title) = LOWER(:title)")
+    List<Note> findByUserAndLearningLanguageAndTitleIgnoreCase(
+            @Param("user") User user,
+            @Param("language") Language language,
+            @Param("title") String title);
 }
