@@ -10,14 +10,18 @@ import com.alang.exception.UserNotFoundException;
 import com.alang.repository.LanguageRepository;
 import com.alang.repository.RecentMessageRepository;
 import com.alang.repository.UserRepository;
+import com.alang.dto.note.NoteDto;
+import com.alang.dto.note.NotePreviewDto;
 import com.alang.service.ChatService;
 import com.alang.service.LLMService;
+import com.alang.service.NoteService;
+import com.alang.service.PromptTemplates;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -25,6 +29,7 @@ import java.util.ArrayList;
 public class ChatServiceImpl implements ChatService {
 
     private final LLMService llmService;
+    private final NoteService noteService;
     private final UserRepository userRepository;
     private final LanguageRepository languageRepository;
     private final RecentMessageRepository recentMessageRepository;
@@ -55,26 +60,45 @@ public class ChatServiceImpl implements ChatService {
         // 2b. Record token usage against user's daily budget
         llmService.recordTokenUsage(userId, llmResponse.getTokenUsage());
 
-        // 3. Save assistant's reply
+        // 3. Strip notes block from user-facing reply
+        String rawReply = llmResponse.getReply();
+        String cleanReply = PromptTemplates.stripNotesBlock(rawReply);
+
+        // 4. Save assistant's reply (clean version, without notes JSON)
         RecentMessage assistantMessage = new RecentMessage();
         assistantMessage.setUser(user);
         assistantMessage.setTeachingLanguage(teachingLanguage);
         assistantMessage.setLearningLanguage(learningLanguage);
         assistantMessage.setRole("assistant");
-        assistantMessage.setContent(llmResponse.getReply());
+        assistantMessage.setContent(cleanReply);
         assistantMessage.setModelUsed(llmResponse.getModelUsed());
         assistantMessage.setTokenCount(llmResponse.getTokenUsage().getTotalTokens());
         recentMessageRepository.save(assistantMessage);
 
-        log.info("Chat exchange saved: userId={}, language={}, model={}",
-                userId, request.getLanguage(), llmResponse.getModelUsed());
+        // 5. Extract and persist notes from LLM response
+        List<NoteDto> extractedNotes = llmService.extractNotes(rawReply, request.getLanguage());
+        List<NoteDto> savedNotes = extractedNotes.isEmpty()
+                ? List.of()
+                : noteService.createNotes(extractedNotes, userId);
 
-        // 4. Build response
+        log.info("Chat exchange saved: userId={}, language={}, model={}, notes={}",
+                userId, request.getLanguage(), llmResponse.getModelUsed(), savedNotes.size());
+
+        // 6. Build response
+        List<NotePreviewDto> notePreviews = savedNotes.stream().map(n -> {
+            NotePreviewDto preview = new NotePreviewDto();
+            preview.setId(n.getId());
+            preview.setType(n.getType());
+            preview.setTitle(n.getTitle());
+            preview.setIntervalDays(1);
+            return preview;
+        }).toList();
+
         ChatMessageResponse response = new ChatMessageResponse();
-        response.setReply(llmResponse.getReply());
+        response.setReply(cleanReply);
         response.setTokenUsage(llmResponse.getTokenUsage());
         response.setModelUsed(llmResponse.getModelUsed());
-        response.setCreatedNotes(new ArrayList<>()); // TODO: Note extraction (Week 3)
+        response.setCreatedNotes(notePreviews);
         return response;
     }
 

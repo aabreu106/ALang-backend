@@ -16,8 +16,12 @@ import com.alang.repository.ConversationSummaryRepository;
 import com.alang.repository.LanguageRepository;
 import com.alang.repository.RecentMessageRepository;
 import com.alang.repository.UserRepository;
+import com.alang.entity.NoteType;
 import com.alang.service.LLMService;
 import com.alang.service.PromptTemplates;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -29,6 +33,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -43,8 +48,12 @@ public class LLMServiceImpl implements LLMService {
     private final RecentMessageRepository recentMessageRepository;
     private final ConversationSummaryRepository conversationSummaryRepository;
 
+    private final ObjectMapper objectMapper;
+
     private static final int MAX_CONTEXT_SUMMARIES = 3;
     private static final int MAX_CONTEXT_MESSAGES = 10;
+    private static final Set<String> VALID_NOTE_TYPES = Set.of("vocab", "grammar", "exception", "other");
+    private static final int MAX_TITLE_LENGTH = 60;
 
     // The message array sent to the LLM looks like: [system prompt] → [summary context] → [recent msg 1] → [recent msg 2] → ... → [new user message]
     @Override
@@ -92,8 +101,63 @@ public class LLMServiceImpl implements LLMService {
 
     @Override
     public List<NoteDto> extractNotes(String llmResponse, String language) {
-        // TODO: Implement note extraction (Week 3)
-        throw new UnsupportedOperationException("TODO: Implement note extraction");
+        String json = PromptTemplates.extractNotesJson(llmResponse);
+        if (json == null) {
+            log.debug("No notes delimiter found in LLM response for language={}", language);
+            return List.of();
+        }
+
+        try {
+            JsonNode root = objectMapper.readTree(json);
+            JsonNode notesArray = root.path("notes");
+            if (!notesArray.isArray() || notesArray.isEmpty()) {
+                return List.of();
+            }
+
+            List<NoteDto> notes = new ArrayList<>();
+            for (JsonNode noteNode : notesArray) {
+                NoteDto note = parseNoteNode(noteNode, language);
+                if (note != null) {
+                    notes.add(note);
+                }
+            }
+
+            log.info("Extracted {} notes from LLM response for language={}", notes.size(), language);
+            return notes;
+        } catch (JsonProcessingException e) {
+            log.warn("Failed to parse notes JSON for language={}: {}", language, e.getMessage());
+            return List.of();
+        }
+    }
+
+    // Validate and parse a single note node from the extracted JSON. Returns null if the note is invalid and should be skipped.
+    private NoteDto parseNoteNode(JsonNode node, String language) {
+        String type = node.path("type").asText("").trim().toLowerCase();
+        String title = node.path("title").asText("").trim();
+        String summary = node.path("summary").asText("").trim();
+        String content = node.path("content").asText("").trim();
+
+        if (!VALID_NOTE_TYPES.contains(type)) {
+            log.warn("Invalid note type '{}', skipping note with title '{}'", type, title);
+            return null;
+        }
+
+        if (title.isEmpty()) {
+            log.warn("Note missing title, skipping");
+            return null;
+        }
+
+        if (title.length() > MAX_TITLE_LENGTH) {
+            title = title.substring(0, MAX_TITLE_LENGTH);
+        }
+
+        NoteDto note = new NoteDto();
+        note.setType(NoteType.valueOf(type));
+        note.setLearningLanguage(language);
+        note.setTitle(title);
+        note.setSummary(summary.isEmpty() ? null : summary);
+        note.setNoteContent(content.isEmpty() ? null : content);
+        return note;
     }
 
     @Override

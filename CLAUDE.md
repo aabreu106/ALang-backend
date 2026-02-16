@@ -104,21 +104,21 @@ Goal: Chat endpoint returns real LLM responses.
 
 Goal: Chat responses automatically produce structured notes.
 
-1. **Prompt engineering for notes**
-   - [ ] Design system prompt that instructs LLM to return structured JSON notes alongside explanations
-   - [ ] Test structured output format across languages
-   - [ ] Iterate on prompt for quality and consistency
+1. **Prompt engineering for notes** ✅
+   - [x] Design system prompt that instructs LLM to return structured JSON notes alongside explanations
+   - [x] Test structured output format across languages
+   - [x] Iterate on prompt for quality and consistency
 
-2. **Note extraction logic**
-   - [ ] Implement `LLMServiceImpl.extractNotes()` (parse JSON from LLM response)
-   - [ ] Validate extracted note data (type, title, confidence)
-   - [ ] Handle cases where LLM returns no extractable notes
+2. **Note extraction logic** ✅
+   - [x] Implement `LLMServiceImpl.extractNotes()` (parse JSON from LLM response)
+   - [x] Validate extracted note data (type, title, confidence)
+   - [x] Handle cases where LLM returns no extractable notes
 
-3. **Note service**
-   - [ ] Create `NoteServiceImpl` (CRUD operations)
-   - [ ] Implement `findSimilarNotes()` for de-duplication (fuzzy title match)
-   - [ ] Wire note creation into chat flow (ChatService calls NoteService after extraction)
-   - [ ] Wire up `NoteController` endpoints
+3. **Note service** ✅
+   - [x] Create `NoteServiceImpl` (CRUD operations)
+   - [x] Implement `findSimilarNotes()` for de-duplication (fuzzy title match)
+   - [x] Wire note creation into chat flow (ChatService calls NoteService after extraction)
+   - [x] Wire up `NoteController` endpoints
 
 ### Week 4 — Conversation Summarization
 
