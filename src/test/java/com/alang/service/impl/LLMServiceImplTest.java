@@ -366,180 +366,30 @@ class LLMServiceImplTest {
     // --- selectModel ---
 
     @Test
-    void selectModel_freeUserCasualChat_returnsCheap() {
-        ChatMessageRequest request = new ChatMessageRequest();
-        request.setIntent("casual_chat");
-        request.setDepth("normal");
-
+    void selectModel_freeUser_returnsCheap() {
         when(userRepository.findById("free-user")).thenReturn(Optional.of(freeUser));
         when(llmProperties.getModels()).thenReturn(createModels());
 
-        String model = llmService.selectModel(request, "free-user");
+        String model = llmService.selectModel("free-user");
 
         assertThat(model).isEqualTo("gpt-3.5-turbo");
     }
 
     @Test
-    void selectModel_freeUserDetailedGrammar_returnsStandard() {
-        ChatMessageRequest request = new ChatMessageRequest();
-        request.setIntent("grammar_explanation");
-        request.setDepth("detailed");
-
-        when(userRepository.findById("free-user")).thenReturn(Optional.of(freeUser));
+    void selectModel_proUser_returnsStandard() {
+        when(userRepository.findById("pro-user")).thenReturn(Optional.of(proUser));
         when(llmProperties.getModels()).thenReturn(createModels());
 
-        String model = llmService.selectModel(request, "free-user");
+        String model = llmService.selectModel("pro-user");
 
         assertThat(model).isEqualTo("gpt-4-turbo");
-    }
-
-    @Test
-    void selectModel_proUserCasualChat_returnsStandard() {
-        ChatMessageRequest request = new ChatMessageRequest();
-        request.setIntent("casual_chat");
-        request.setDepth("normal");
-
-        when(userRepository.findById("pro-user")).thenReturn(Optional.of(proUser));
-        when(llmProperties.getModels()).thenReturn(createModels());
-
-        String model = llmService.selectModel(request, "pro-user");
-
-        assertThat(model).isEqualTo("gpt-4-turbo");
-    }
-
-    @Test
-    void selectModel_proUserGrammar_returnsPremium() {
-        ChatMessageRequest request = new ChatMessageRequest();
-        request.setIntent("grammar_explanation");
-        request.setDepth("normal");
-
-        when(userRepository.findById("pro-user")).thenReturn(Optional.of(proUser));
-        when(llmProperties.getModels()).thenReturn(createModels());
-
-        String model = llmService.selectModel(request, "pro-user");
-
-        assertThat(model).isEqualTo("gpt-4");
-    }
-
-    @Test
-    void selectModel_proUserDetailed_returnsPremium() {
-        ChatMessageRequest request = new ChatMessageRequest();
-        request.setIntent("casual_chat");
-        request.setDepth("detailed");
-
-        when(userRepository.findById("pro-user")).thenReturn(Optional.of(proUser));
-        when(llmProperties.getModels()).thenReturn(createModels());
-
-        String model = llmService.selectModel(request, "pro-user");
-
-        assertThat(model).isEqualTo("gpt-4");
-    }
-
-    @Test
-    void selectModel_freeUserNonDetailedGrammar_returnsCheap() {
-        ChatMessageRequest request = new ChatMessageRequest();
-        request.setIntent("grammar_explanation");
-        request.setDepth("normal");
-
-        when(userRepository.findById("free-user")).thenReturn(Optional.of(freeUser));
-        when(llmProperties.getModels()).thenReturn(createModels());
-
-        String model = llmService.selectModel(request, "free-user");
-
-        // Free tier: educational but not detailed → cheap
-        assertThat(model).isEqualTo("gpt-3.5-turbo");
-    }
-
-    @Test
-    void selectModel_handlesNullIntentAndDepth() {
-        ChatMessageRequest request = new ChatMessageRequest();
-        // intent and depth are null
-
-        when(userRepository.findById("free-user")).thenReturn(Optional.of(freeUser));
-        when(llmProperties.getModels()).thenReturn(createModels());
-
-        String model = llmService.selectModel(request, "free-user");
-
-        assertThat(model).isEqualTo("gpt-3.5-turbo");
-    }
-
-    @Test
-    void selectModel_freeUserDetailedVocabulary_returnsStandard() {
-        ChatMessageRequest request = new ChatMessageRequest();
-        request.setIntent("vocabulary");
-        request.setDepth("detailed");
-
-        when(userRepository.findById("free-user")).thenReturn(Optional.of(freeUser));
-        when(llmProperties.getModels()).thenReturn(createModels());
-
-        String model = llmService.selectModel(request, "free-user");
-
-        assertThat(model).isEqualTo("gpt-4-turbo");
-    }
-
-    @Test
-    void selectModel_freeUserDetailedCorrectionRequest_returnsStandard() {
-        ChatMessageRequest request = new ChatMessageRequest();
-        request.setIntent("correction_request");
-        request.setDepth("detailed");
-
-        when(userRepository.findById("free-user")).thenReturn(Optional.of(freeUser));
-        when(llmProperties.getModels()).thenReturn(createModels());
-
-        String model = llmService.selectModel(request, "free-user");
-
-        assertThat(model).isEqualTo("gpt-4-turbo");
-    }
-
-    @Test
-    void selectModel_proUserCorrectionRequest_returnsPremium() {
-        ChatMessageRequest request = new ChatMessageRequest();
-        request.setIntent("correction_request");
-        request.setDepth("normal");
-
-        when(userRepository.findById("pro-user")).thenReturn(Optional.of(proUser));
-        when(llmProperties.getModels()).thenReturn(createModels());
-
-        String model = llmService.selectModel(request, "pro-user");
-
-        assertThat(model).isEqualTo("gpt-4");
-    }
-
-    @Test
-    void selectModel_proUserVocabulary_returnsPremium() {
-        ChatMessageRequest request = new ChatMessageRequest();
-        request.setIntent("vocabulary");
-        request.setDepth("brief");
-
-        when(userRepository.findById("pro-user")).thenReturn(Optional.of(proUser));
-        when(llmProperties.getModels()).thenReturn(createModels());
-
-        String model = llmService.selectModel(request, "pro-user");
-
-        assertThat(model).isEqualTo("gpt-4");
-    }
-
-    @Test
-    void selectModel_freeUserDetailedNonEducational_returnsCheap() {
-        ChatMessageRequest request = new ChatMessageRequest();
-        request.setIntent("casual_chat");
-        request.setDepth("detailed");
-
-        when(userRepository.findById("free-user")).thenReturn(Optional.of(freeUser));
-        when(llmProperties.getModels()).thenReturn(createModels());
-
-        String model = llmService.selectModel(request, "free-user");
-
-        // detailed but not educational → still cheap for free tier
-        assertThat(model).isEqualTo("gpt-3.5-turbo");
     }
 
     @Test
     void selectModel_throwsWhenUserNotFound() {
-        ChatMessageRequest request = new ChatMessageRequest();
         when(userRepository.findById("missing")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> llmService.selectModel(request, "missing"))
+        assertThatThrownBy(() -> llmService.selectModel("missing"))
                 .isInstanceOf(UserNotFoundException.class);
     }
 
@@ -804,8 +654,6 @@ class LLMServiceImplTest {
             ChatMessageRequest request = new ChatMessageRequest();
             request.setLanguage("ja");
             request.setMessage(msg);
-            request.setIntent("casual_chat");
-            request.setDepth("normal");
             request.setIncludeContext(false);
             return request;
         }
@@ -894,7 +742,7 @@ class LLMServiceImplTest {
 
             assertThatThrownBy(() -> llmService.generateReply(request, "free-user"))
                     .isInstanceOf(RateLimitExceededException.class)
-                    .hasMessageContaining("Daily token limit exceeded");
+                    .hasMessageContaining("Not enough tokens remaining");
         }
 
         // --- parseApiResponse (tested indirectly through generateReply) ---
@@ -1130,7 +978,7 @@ class LLMServiceImplTest {
         }
 
         @Test
-        void generateReply_usesCorrectModelBasedOnRequest() {
+        void generateReply_usesStandardModelForProUser() {
             // Set up pro user mocks directly (not mockCommonDependencies which stubs free-user)
             proUser.setTotalDailyTokensUsed(0L);
             proUser.setLastTokenResetDate(LocalDateTime.now());
@@ -1144,15 +992,13 @@ class LLMServiceImplTest {
             when(llmProperties.getTokenLimits()).thenReturn(createTokenLimits());
             lenient().when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-            mockWebClientSuccess(buildApiResponse("Detailed grammar explanation", 100, 200, 300));
+            mockWebClientSuccess(buildApiResponse("Grammar explanation", 100, 200, 300));
 
             ChatMessageRequest request = buildRequest("Explain て-form in detail");
-            request.setIntent("grammar_explanation");
-            request.setDepth("detailed");
 
             LLMService.LLMResponse response = llmService.generateReply(request, "pro-user");
 
-            assertThat(response.getModelUsed()).isEqualTo("gpt-4");
+            assertThat(response.getModelUsed()).isEqualTo("gpt-4-turbo");
         }
     }
 

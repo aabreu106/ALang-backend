@@ -18,7 +18,7 @@ import java.util.List;
  *
  * Why centralize LLM logic here?
  * 1. COST CONTROL: Single place to enforce rate limits, token budgets
- * 2. MODEL SELECTION: Choose cheap vs premium model based on request
+ * 2. MODEL SELECTION: Choose model based on user tier
  * 3. PROMPT ENGINEERING: Centralized prompt templates and optimization
  * 4. TOKEN ACCOUNTING: Track usage for billing, analytics, limits
  * 5. PROVIDER ABSTRACTION: Can switch providers (Ollama, OpenAI, Anthropic, etc.) without touching controllers
@@ -41,20 +41,18 @@ public interface LLMService {
      * Generate a reply to user's message.
      *
      * ARCHITECTURAL FLOW:
-     * 1. Determine which model to use (based on intent, depth, user tier)
+     * 1. Determine which model to use (based on user tier)
      * 2. Load conversation context (summaries + recent messages)
-     * 3. Check token budget (user monthly limit, per-request limit)
+     * 3. Check token budget (user daily limit, per-request limit)
      * 4. Assemble prompt (system prompt + context + user message)
      * 5. Call LLM API
      * 6. Parse response
      * 7. Track token usage
      * 8. Return reply
      *
-     * MODEL SELECTION STRATEGY (TODO: implement in impl):
-     * - intent="casual_chat" + depth="brief" -> CHEAP model (gpt-3.5-turbo)
-     * - intent="grammar_explanation" + depth="detailed" -> PREMIUM model (gpt-4, claude-3-opus)
-     * - User tier="free" + total_tokens > limit -> CHEAP model or reject
-     * - User tier="premium" -> Always PREMIUM model
+     * MODEL SELECTION STRATEGY:
+     * - User tier="free" -> CHEAP model
+     * - User tier="pro" -> STANDARD model
      *
      * CONTEXT ASSEMBLY (TODO: implement in impl):
      * - Load last 2-3 ConversationSummary records for this user+language
@@ -177,28 +175,16 @@ public interface LLMService {
     void recordTokenUsage(String userId, TokenUsageDto tokenUsage);
 
     /**
-     * Choose which LLM model to use based on request parameters.
+     * Choose which LLM model to use based on user tier.
      *
-     * ARCHITECTURAL NOTE:
-     * This is where cost optimization happens.
+     * Model tiers:
+     * - CHEAP: Used for free tier users
+     * - STANDARD: Used for pro tier users
      *
-     * Decision factors:
-     * 1. Request intent (casual vs educational)
-     * 2. Request depth (brief vs detailed)
-     * 3. User tier (free vs premium)
-     * 4. Language (some models are better at certain languages)
-     * 5. User's remaining token budget
-     *
-     * Model tiers (example):
-     * - CHEAP: gpt-3.5-turbo, claude-3-haiku ($0.0005/1k tokens)
-     * - STANDARD: gpt-4-turbo, claude-3-sonnet ($0.01/1k tokens)
-     * - PREMIUM: gpt-4, claude-3-opus ($0.03/1k tokens)
-     *
-     * @param request User's request
-     * @param userId User ID (to check tier and budget)
-     * @return Model identifier (e.g., "gpt-4", "claude-3-opus")
+     * @param userId User ID (to check tier)
+     * @return Model identifier (e.g., "gpt-4-turbo", "gpt-3.5-turbo")
      */
-    String selectModel(ChatMessageRequest request, String userId);
+    String selectModel(String userId);
 
     /**
      * LLM response wrapper.

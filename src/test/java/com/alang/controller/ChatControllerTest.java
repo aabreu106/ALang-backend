@@ -30,8 +30,6 @@ class ChatControllerTest {
         ChatMessageRequest request = new ChatMessageRequest();
         request.setLanguage("ja");
         request.setMessage("What is the て-form?");
-        request.setIntent("grammar_explanation");
-        request.setDepth("normal");
 
         ChatMessageResponse chatResponse = new ChatMessageResponse();
         chatResponse.setReply("The て-form is...");

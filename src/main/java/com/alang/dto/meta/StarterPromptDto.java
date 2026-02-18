@@ -15,5 +15,4 @@ public class StarterPromptDto {
     private String language; // "ja", "es", etc.
     private String category; // "grammar", "vocabulary", "culture"
     private String promptText; // e.g., "What's the difference between は and が?"
-    private String intent; // Corresponding intent for ChatMessageRequest
 }

@@ -64,9 +64,9 @@ public class MetaController {
         // Example hardcoded response for Japanese:
         // if ("ja".equals(language)) {
         //     List<StarterPromptDto> prompts = List.of(
-        //         new StarterPromptDto("1", "ja", "grammar", "What's the difference between は and が?", "grammar_explanation"),
-        //         new StarterPromptDto("2", "ja", "grammar", "How do I use the て-form?", "grammar_explanation"),
-        //         new StarterPromptDto("3", "ja", "vocabulary", "What are common counter words?", "vocabulary")
+        //         new StarterPromptDto("1", "ja", "grammar", "What's the difference between は and が?"),
+        //         new StarterPromptDto("2", "ja", "grammar", "How do I use the て-form?"),
+        //         new StarterPromptDto("3", "ja", "vocabulary", "What are common counter words?")
         //     );
         //     return ResponseEntity.ok(prompts);
         // }

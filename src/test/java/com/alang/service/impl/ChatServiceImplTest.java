@@ -75,8 +75,6 @@ class ChatServiceImplTest {
         ChatMessageRequest request = new ChatMessageRequest();
         request.setLanguage("ja");
         request.setMessage(message);
-        request.setIntent("grammar_explanation");
-        request.setDepth("normal");
         request.setIncludeContext(true);
         return request;
     }

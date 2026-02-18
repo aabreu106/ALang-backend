@@ -64,7 +64,7 @@ public class LLMServiceImpl implements LLMService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));
 
-        String model = selectModelForUser(request, user);
+        String model = selectModelForUser(user);
 
         Language appLanguage = languageRepository.findById(user.getAppLanguageCode())
                 .orElseThrow(() -> new IllegalStateException("App language not found: " + user.getAppLanguageCode()));
@@ -91,7 +91,9 @@ public class LLMServiceImpl implements LLMService {
         if (!checkTokenBudget(userId, estimatedTokens)) {
             long remaining = Math.max(0, getDailyLimit(user) - user.getTotalDailyTokensUsed());
             throw new RateLimitExceededException(
-                    "Daily token limit exceeded. Please try again tomorrow.", remaining);
+                    "Not enough tokens remaining for this request. Estimated cost: "
+                            + estimatedTokens + " tokens. Please try again tomorrow.",
+                    remaining);
         }
 
         LLMApiResponse apiResponse = callLLMApi(model, systemPrompt, messages);
@@ -235,32 +237,19 @@ public class LLMServiceImpl implements LLMService {
     }
 
     @Override
-    public String selectModel(ChatMessageRequest request, String userId) {
+    public String selectModel(String userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));
-        return selectModelForUser(request, user);
+        return selectModelForUser(user);
     }
 
-    private String selectModelForUser(ChatMessageRequest request, User user) {
-        String intent = request.getIntent() != null ? request.getIntent() : "";
-        String depth = request.getDepth() != null ? request.getDepth() : "normal";
-        boolean isEducational = intent.equals("grammar_explanation")
-                || intent.equals("correction_request")
-                || intent.equals("vocabulary");
-
+    private String selectModelForUser(User user) {
         LLMProperties.Models models = llmProperties.getModels();
 
         if (user.getTier() == UserTier.pro) {
-            if (depth.equals("detailed") || isEducational) {
-                return models.getPremium();
-            }
             return models.getStandard();
         }
 
-        // Free tier: standard only for detailed educational requests, cheap otherwise
-        if (depth.equals("detailed") && isEducational) {
-            return models.getStandard();
-        }
         return models.getCheap();
     }
 
