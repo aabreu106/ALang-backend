@@ -12,6 +12,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 /**
  * Note management controller.
  *
@@ -34,7 +36,7 @@ public class NoteController {
      * GET /notes
      * Get all notes for authenticated user.
      *
-     * Supports filtering by language, type, confidence, search query.
+     * Supports filtering by language, type, confidence, search query, and tags.
      */
     @GetMapping
     public ResponseEntity<NoteListResponse> getNotes(
@@ -42,11 +44,26 @@ public class NoteController {
         @RequestParam(required = false) String type,
         @RequestParam(required = false) Double minConfidence,
         @RequestParam(required = false) String search,
+        @RequestParam(required = false) String tagCategory,
+        @RequestParam(required = false) String tagValue,
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "20") int pageSize,
         @AuthenticationPrincipal String userId
     ) {
-        return ResponseEntity.ok(noteService.getNotes(userId, language, type, minConfidence, search, page, pageSize));
+        return ResponseEntity.ok(noteService.getNotes(userId, language, type, minConfidence, search, tagCategory, tagValue, page, pageSize));
+    }
+
+    /**
+     * GET /notes/tags/{category}
+     * Get all distinct tag values for a given category across the user's notes.
+     * Useful for populating filter dropdowns on the frontend.
+     */
+    @GetMapping("/tags/{category}")
+    public ResponseEntity<List<String>> getTagValues(
+        @PathVariable String category,
+        @AuthenticationPrincipal String userId
+    ) {
+        return ResponseEntity.ok(noteService.getTagValues(userId, category));
     }
 
     /**

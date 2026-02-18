@@ -98,10 +98,26 @@ public class PromptTemplates {
                   "type": "vocab | grammar | exception | other",
                   "title": "short title (the word, phrase, or grammar point)",
                   "summary": "one-sentence explanation in the learner's native language",
-                  "content": "fuller explanation with examples, in the learner's native language"
+                  "content": "fuller explanation with examples, in the learner's native language",
+                  "structured": { ... type-specific fields ... },
+                  "tags": [
+                    { "category": "...", "value": "..." }
+                  ]
                 }
               ]
             }
+
+            Type-specific "structured" fields:
+            - For "vocab": { "word": "...", "reading": "... (pronunciation/romanization if applicable)", "meaning": "...", "partOfSpeech": "noun|verb|adjective|adverb|particle|other", "exampleSentences": ["..."], "commonMistakes": ["..."] }
+            - For "grammar": { "pattern": "...", "meaning": "...", "explanation": "...", "formality": "casual|polite|formal", "exampleSentences": ["..."], "commonMistakes": ["..."] }
+            - For "exception": { "rule": "...", "exception": "...", "explanation": "...", "exampleSentences": ["..."] }
+            - For "other": use any relevant key-value pairs.
+
+            Tag categories and example values:
+            - "topic": food, travel, work, family, weather, shopping, health, school, daily_life, culture, sports, technology, entertainment
+            - "formality": casual, polite, formal, slang, literary
+            - "difficulty": beginner, intermediate, advanced
+            - "function": contrast, cause, condition, request, permission, comparison, negation, sequence, description, greeting
 
             Rules for notes:
             - Only include notes when you actually taught something. Casual greetings or off-topic replies should have NO notes block.
@@ -109,6 +125,8 @@ public class PromptTemplates {
             - "title" should be the target-language word/phrase or grammar point name. Keep it short (under 60 characters).
             - "summary" is 1-2 sentences max — a quick reminder of the concept.
             - "content" is the full explanation including examples. Use the same quality as your main explanation.
+            - "structured" contains type-specific fields as described above. Always include it.
+            - "tags" is an array of 1-4 tags. Each tag has a "category" and "value". Pick from the categories/values listed above. Use lowercase values.
             - Extract 1-3 notes per response. Do not over-extract — only distinct concepts the learner should review.
             - Write "summary" and "content" in the learner's native language, but include target-language examples inline.
             - If you corrected a mistake, extract it as type "exception" or "grammar" as appropriate.
@@ -129,16 +147,34 @@ public class PromptTemplates {
                   "type": "vocab | grammar | exception | other",
                   "title": "short title (the word, phrase, or grammar point)",
                   "summary": "one-sentence explanation in the learner's native language",
-                  "content": "fuller explanation with examples, in the learner's native language"
+                  "content": "fuller explanation with examples, in the learner's native language",
+                  "structured": { ... type-specific fields ... },
+                  "tags": [
+                    { "category": "...", "value": "..." }
+                  ]
                 }
               ]
             }
+
+            Type-specific "structured" fields:
+            - For "vocab": { "word": "...", "reading": "...", "meaning": "...", "partOfSpeech": "noun|verb|adjective|adverb|particle|other", "exampleSentences": ["..."], "commonMistakes": ["..."] }
+            - For "grammar": { "pattern": "...", "meaning": "...", "explanation": "...", "formality": "casual|polite|formal", "exampleSentences": ["..."], "commonMistakes": ["..."] }
+            - For "exception": { "rule": "...", "exception": "...", "explanation": "...", "exampleSentences": ["..."] }
+            - For "other": use any relevant key-value pairs.
+
+            Tag categories and example values:
+            - "topic": food, travel, work, family, weather, shopping, health, school, daily_life, culture, sports, technology, entertainment
+            - "formality": casual, polite, formal, slang, literary
+            - "difficulty": beginner, intermediate, advanced
+            - "function": contrast, cause, condition, request, permission, comparison, negation, sequence, description, greeting
 
             Rules:
             - "type" must be exactly one of: vocab, grammar, exception, other.
             - "title" should be the target-language word/phrase or grammar point name. Under 60 characters.
             - "summary" is 1-2 sentences — a quick reminder.
             - "content" is the full explanation with examples.
+            - "structured" contains type-specific fields. Always include it.
+            - "tags" is an array of 1-4 tags with "category" and "value". Use lowercase values.
             - Extract 1-3 notes max. Only distinct concepts worth reviewing.
             - If the response contains no teachable content, return: {"notes": []}
             - Write "summary" and "content" in the learner's native language, with target-language examples inline.

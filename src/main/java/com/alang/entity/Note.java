@@ -5,6 +5,9 @@ import lombok.Data;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Structured learning note extracted from conversations.
@@ -57,6 +60,20 @@ public class Note {
     @Column(columnDefinition = "TEXT")
     private String noteContent;
 
+    /**
+     * Type-specific structured data stored as JSONB.
+     * Schema varies by NoteType:
+     * - vocab: word, reading, meaning, partOfSpeech, exampleSentences[], commonMistakes[]
+     * - grammar: pattern, meaning, explanation, formality, exampleSentences[], commonMistakes[]
+     * - exception: rule, exception, explanation, exampleSentences[]
+     * - other: freeform key-value pairs
+     */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private Map<String, Object> structuredContent;
+
+    @OneToMany(mappedBy = "note", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<NoteTag> tags = new ArrayList<>();
 
     /**
      * Has the user manually edited this note?
@@ -82,12 +99,6 @@ public class Note {
      * Current interval in days
      */
     private Integer intervalDays = 1;
-
-    /**
-     * TODO: Related notes
-     * @ManyToMany relationships to other notes
-     * Example: "は" note relates to "が" note
-     */
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;

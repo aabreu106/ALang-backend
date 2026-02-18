@@ -4,6 +4,7 @@ import com.alang.entity.NoteType;
 import lombok.Data;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Full note details for GET /notes/{id}
@@ -20,10 +21,20 @@ public class NoteDto {
     private String noteContent; // Longer explanation if available
 
     /**
-     * Related notes (by ID)
-     * Example: Related grammar points, similar vocabulary
+     * Type-specific structured data.
+     * Schema varies by NoteType (vocab, grammar, exception, other).
      */
-    private List<String> relatedNoteIds;
+    private Map<String, Object> structuredContent;
+
+    /**
+     * Controlled tags for categorization and filtering.
+     */
+    private List<NoteTagDto> tags;
+
+    /**
+     * Related notes (linked via note_relations table).
+     */
+    private List<NoteRelationDto> relations;
 
     /**
      * User can manually override/edit notes

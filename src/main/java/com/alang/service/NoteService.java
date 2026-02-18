@@ -63,15 +63,15 @@ public interface NoteService {
      * - type: Filter by note type (vocab, grammar, exception)
      * - minConfidence: Only notes with confidence >= this value
      * - search: Full-text search in title, summary, examples
-     *
-     * TODO: Implement pagination
-     * TODO: Implement sorting (by date, confidence, review status)
+     * - tagCategory + tagValue: Filter by tag (e.g., topic=food, difficulty=beginner)
      *
      * @param userId User ID
      * @param language Optional language filter
      * @param type Optional type filter
      * @param minConfidence Optional confidence filter
      * @param searchQuery Optional search query
+     * @param tagCategory Optional tag category filter
+     * @param tagValue Optional tag value filter (requires tagCategory)
      * @param page Page number (0-indexed)
      * @param pageSize Page size
      * @return Paginated list of notes
@@ -82,9 +82,21 @@ public interface NoteService {
         String type,
         Double minConfidence,
         String searchQuery,
+        String tagCategory,
+        String tagValue,
         int page,
         int pageSize
     );
+
+    /**
+     * Get all distinct tag values for a given category across a user's notes.
+     * Useful for populating filter dropdowns on the frontend.
+     *
+     * @param userId User ID
+     * @param category Tag category (e.g., "topic", "difficulty")
+     * @return List of distinct tag values
+     */
+    List<String> getTagValues(String userId, String category);
 
     /**
      * Update a note.

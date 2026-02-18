@@ -50,6 +50,7 @@ CREATE TABLE notes (
     title                 VARCHAR(255) NOT NULL,
     summary               TEXT,
     note_content          TEXT,
+    structured_content    JSONB,        -- type-specific structured data (schema varies by note_type)
     user_edited           BOOLEAN          NOT NULL DEFAULT FALSE,
     review_count          INTEGER          DEFAULT 0,
     last_reviewed_at      TIMESTAMP,
@@ -58,6 +59,30 @@ CREATE TABLE notes (
     interval_days         INTEGER          DEFAULT 1,
     created_at            TIMESTAMP        NOT NULL,
     updated_at            TIMESTAMP        NOT NULL
+);
+
+-- ===========================
+-- Note tags (controlled tag system for categorizing notes)
+-- ===========================
+
+CREATE TABLE note_tags (
+    id           VARCHAR(255) PRIMARY KEY,
+    note_id      VARCHAR(255) NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
+    tag_category VARCHAR(50)  NOT NULL,  -- 'topic', 'formality', 'difficulty', 'function'
+    tag_value    VARCHAR(100) NOT NULL,
+    UNIQUE(note_id, tag_category, tag_value)
+);
+
+-- ===========================
+-- Note relations (links between related notes)
+-- ===========================
+
+CREATE TABLE note_relations (
+    id             VARCHAR(255) PRIMARY KEY,
+    source_note_id VARCHAR(255) NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
+    target_note_id VARCHAR(255) NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
+    relation_type  VARCHAR(50)  NOT NULL,  -- 'similar_to', 'opposite_of', 'often_confused_with', 'related'
+    UNIQUE(source_note_id, target_note_id, relation_type)
 );
 
 
@@ -121,6 +146,14 @@ CREATE INDEX idx_notes_user_learning_language ON notes(user_id, learning_languag
 
 -- Notes: review queue (WHERE next_review_at <= now)
 CREATE INDEX idx_notes_next_review ON notes(next_review_at);
+
+-- Note tags: lookup by note, and filter by category+value
+CREATE INDEX idx_note_tags_note ON note_tags(note_id);
+CREATE INDEX idx_note_tags_category_value ON note_tags(tag_category, tag_value);
+
+-- Note relations: lookup by source and target
+CREATE INDEX idx_note_relations_source ON note_relations(source_note_id);
+CREATE INDEX idx_note_relations_target ON note_relations(target_note_id);
 
 -- Recent messages: context loading by user + learning language
 CREATE INDEX idx_recent_messages_user_learning_language ON recent_messages(user_id, learning_language_code);

@@ -30,7 +30,10 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.time.LocalDate;
+import com.alang.dto.note.NoteTagDto;
+
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -130,6 +133,8 @@ public class LLMServiceImpl implements LLMService {
         }
     }
 
+    private static final Set<String> VALID_TAG_CATEGORIES = Set.of("topic", "formality", "difficulty", "function");
+
     // Validate and parse a single note node from the extracted JSON. Returns null if the note is invalid and should be skipped.
     private NoteDto parseNoteNode(JsonNode node, String language) {
         String type = node.path("type").asText("").trim().toLowerCase();
@@ -157,6 +162,29 @@ public class LLMServiceImpl implements LLMService {
         note.setTitle(title);
         note.setSummary(summary.isEmpty() ? null : summary);
         note.setNoteContent(content.isEmpty() ? null : content);
+
+        // Parse structured content (type-specific fields)
+        JsonNode structuredNode = node.path("structured");
+        if (structuredNode.isObject()) {
+            Map<String, Object> structured = objectMapper.convertValue(structuredNode, objectMapper.getTypeFactory()
+                    .constructMapType(HashMap.class, String.class, Object.class));
+            note.setStructuredContent(structured);
+        }
+
+        // Parse tags
+        JsonNode tagsNode = node.path("tags");
+        if (tagsNode.isArray() && !tagsNode.isEmpty()) {
+            List<NoteTagDto> tags = new ArrayList<>();
+            for (JsonNode tagNode : tagsNode) {
+                String category = tagNode.path("category").asText("").trim().toLowerCase();
+                String value = tagNode.path("value").asText("").trim().toLowerCase();
+                if (VALID_TAG_CATEGORIES.contains(category) && !value.isEmpty()) {
+                    tags.add(new NoteTagDto(category, value));
+                }
+            }
+            note.setTags(tags);
+        }
+
         return note;
     }
 
