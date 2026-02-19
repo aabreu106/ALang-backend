@@ -5,6 +5,7 @@ import com.alang.dto.chat.ChatMessageRequest;
 import com.alang.dto.chat.ChatMessageResponse;
 import com.alang.entity.Language;
 import com.alang.entity.RecentMessage;
+import com.alang.entity.RoleType;
 import com.alang.entity.User;
 import com.alang.exception.UserNotFoundException;
 import com.alang.repository.LanguageRepository;
@@ -50,7 +51,7 @@ public class ChatServiceImpl implements ChatService {
         userMessage.setUser(user);
         userMessage.setTeachingLanguage(teachingLanguage);
         userMessage.setLearningLanguage(learningLanguage);
-        userMessage.setRole("user");
+        userMessage.setRole(RoleType.user);
         userMessage.setContent(request.getMessage());
         recentMessageRepository.save(userMessage);
 
@@ -69,7 +70,7 @@ public class ChatServiceImpl implements ChatService {
         assistantMessage.setUser(user);
         assistantMessage.setTeachingLanguage(teachingLanguage);
         assistantMessage.setLearningLanguage(learningLanguage);
-        assistantMessage.setRole("assistant");
+        assistantMessage.setRole(RoleType.assistant);
         assistantMessage.setContent(cleanReply);
         assistantMessage.setModelUsed(llmResponse.getModelUsed());
         assistantMessage.setTokenCount(llmResponse.getTokenUsage().getTotalTokens());

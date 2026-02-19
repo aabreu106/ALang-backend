@@ -61,7 +61,7 @@ llm:
   token-limits:
     free-tier-daily: 50000 # ~50k tokens/day for free users
     pro-tier-daily: 500000 # ~500k tokens/day for pro users
-    per-request-max: 5000 # Max tokens per single request
+    per-request-max: 4096 # Max tokens per single request
 
   # Summarization configuration
   summarization:

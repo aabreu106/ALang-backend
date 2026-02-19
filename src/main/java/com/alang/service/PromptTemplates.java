@@ -121,6 +121,7 @@ public class PromptTemplates {
 
             Rules for notes:
             - Only include notes when you actually taught something. Casual greetings or off-topic replies should have NO notes block.
+            - Do not make multiple notes about the same concept. For example, if you explained a verb conjugation pattern, do not also make separate notes for each example sentence that uses that pattern. Focus on distinct concepts worth reviewing.
             - "type" must be exactly one of: vocab, grammar, exception, other.
             - "title" should be the target-language word/phrase or grammar point name. Keep it short (under 60 characters).
             - "summary" is 1-2 sentences max — a quick reminder of the concept.

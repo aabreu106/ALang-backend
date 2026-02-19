@@ -36,6 +36,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.HashSet;
 import java.util.Set;
 
 @Slf4j
@@ -120,9 +121,10 @@ public class LLMServiceImpl implements LLMService {
             }
 
             List<NoteDto> notes = new ArrayList<>();
+            Set<String> seenTitles = new HashSet<>();
             for (JsonNode noteNode : notesArray) {
                 NoteDto note = parseNoteNode(noteNode, language);
-                if (note != null) {
+                if (note != null && seenTitles.add(note.getTitle().toLowerCase())) {
                     notes.add(note);
                 }
             }
@@ -294,7 +296,7 @@ public class LLMServiceImpl implements LLMService {
                         user, learningLanguage, PageRequest.of(0, MAX_CONTEXT_MESSAGES));
 
         for (RecentMessage msg : recentMessages) {
-            contextMessages.add(Map.of("role", msg.getRole(), "content", msg.getContent()));
+            contextMessages.add(Map.of("role", msg.getRole().name(), "content", msg.getContent()));
         }
 
         return contextMessages;

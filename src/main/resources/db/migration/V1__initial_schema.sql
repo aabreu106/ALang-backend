@@ -22,6 +22,7 @@ CREATE TABLE languages (
 
 CREATE TYPE user_tier AS ENUM ('free', 'pro');
 CREATE TYPE note_type AS ENUM ('vocab', 'grammar', 'exception', 'other');
+CREATE TYPE role_type as ENUM ('user', 'assistant');
 
 CREATE TABLE users (
     id                      VARCHAR(255) PRIMARY KEY,
@@ -113,7 +114,7 @@ CREATE TABLE recent_messages (
     user_id                VARCHAR(255) NOT NULL REFERENCES users(id),
     teaching_language_code VARCHAR(255) NOT NULL REFERENCES languages(code),
     learning_language_code VARCHAR(255) NOT NULL REFERENCES languages(code),
-    role          VARCHAR(255) NOT NULL,  -- "user" or "assistant"
+    role          role_type    NOT NULL,
     content       TEXT         NOT NULL,
     model_used    VARCHAR(255),
     token_count   INTEGER,

@@ -896,10 +896,10 @@ class LLMServiceImplTest {
 
             // Set up recent messages
             RecentMessage msg1 = new RecentMessage();
-            msg1.setRole("user");
+            msg1.setRole(RoleType.user);
             msg1.setContent("What is は?");
             RecentMessage msg2 = new RecentMessage();
-            msg2.setRole("assistant");
+            msg2.setRole(RoleType.assistant);
             msg2.setContent("は is a topic marker.");
             when(recentMessageRepository.findByUserAndLearningLanguageOrderByCreatedAtAsc(
                     eq(freeUser), eq(japanese), any())).thenReturn(List.of(msg1, msg2));
