@@ -28,19 +28,16 @@ class ChatControllerTest {
     @Test
     void sendMessage_returnsOkWithResponse() {
         ChatMessageRequest request = new ChatMessageRequest();
-        request.setLanguage("ja");
         request.setMessage("What is the て-form?");
-        request.setIntent("grammar_explanation");
-        request.setDepth("normal");
+        request.setSessionId("session-1"); // pre-set so stub matches after controller injects it
 
         ChatMessageResponse chatResponse = new ChatMessageResponse();
         chatResponse.setReply("The て-form is...");
-        chatResponse.setCreatedNotes(Collections.emptyList());
         chatResponse.setModelUsed("gpt-3.5-turbo");
 
         when(chatService.sendMessage(request, "user-1")).thenReturn(chatResponse);
 
-        var response = chatController.sendMessage(request, "user-1");
+        var response = chatController.sendMessage("session-1", request, "user-1");
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isEqualTo(chatResponse);
@@ -50,14 +47,14 @@ class ChatControllerTest {
     @Test
     void sendMessage_passesUserIdToService() {
         ChatMessageRequest request = new ChatMessageRequest();
-        request.setLanguage("es");
         request.setMessage("How do I conjugate ser?");
+        request.setSessionId("session-42");
 
         ChatMessageResponse chatResponse = new ChatMessageResponse();
         chatResponse.setReply("Ser conjugates as...");
         when(chatService.sendMessage(request, "user-42")).thenReturn(chatResponse);
 
-        chatController.sendMessage(request, "user-42");
+        chatController.sendMessage("session-42", request, "user-42");
 
         verify(chatService).sendMessage(request, "user-42");
     }

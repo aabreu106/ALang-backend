@@ -1,19 +1,16 @@
 package com.alang.service.impl;
 
-import com.alang.dto.note.NoteDto;
-import com.alang.dto.note.NoteListResponse;
-import com.alang.dto.note.UpdateNoteRequest;
-import com.alang.entity.Language;
-import com.alang.entity.Note;
-import com.alang.entity.NoteType;
-import com.alang.entity.User;
+import com.alang.dto.note.*;
+import com.alang.entity.*;
 import com.alang.exception.NoteNotFoundException;
 import com.alang.exception.UnauthorizedException;
 import com.alang.exception.UserNotFoundException;
 import com.alang.repository.LanguageRepository;
 import com.alang.repository.NoteRepository;
+import com.alang.repository.NoteTagRepository;
 import com.alang.repository.UserRepository;
 import com.alang.service.NoteService;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -31,8 +28,10 @@ import java.util.List;
 public class NoteServiceImpl implements NoteService {
 
     private final NoteRepository noteRepository;
+    private final NoteTagRepository noteTagRepository;
     private final UserRepository userRepository;
     private final LanguageRepository languageRepository;
+    private final EntityManager entityManager;
 
     // Persist a single note, defaulting teachingLanguage to the user's app language if not provided.
     @Override
@@ -61,10 +60,26 @@ public class NoteServiceImpl implements NoteService {
         note.setTitle(noteDto.getTitle());
         note.setSummary(noteDto.getSummary());
         note.setNoteContent(noteDto.getNoteContent());
+        note.setStructuredContent(noteDto.getStructuredContent());
         note.setUserEdited(false);
 
+        // Save note first to get ID, then add tags
         Note saved = noteRepository.save(note);
-        log.info("Created note: id={}, type={}, title={}, userId={}", saved.getId(), saved.getType(), saved.getTitle(), userId);
+
+        // Create tags if provided
+        if (noteDto.getTags() != null && !noteDto.getTags().isEmpty()) {
+            for (NoteTagDto tagDto : noteDto.getTags()) {
+                NoteTag tag = new NoteTag();
+                tag.setNote(saved);
+                tag.setTagCategory(tagDto.getCategory());
+                tag.setTagValue(tagDto.getValue());
+                saved.getTags().add(tag);
+            }
+            saved = noteRepository.save(saved);
+        }
+
+        log.info("Created note: id={}, type={}, title={}, tags={}, userId={}",
+                saved.getId(), saved.getType(), saved.getTitle(), saved.getTags().size(), userId);
         return toDto(saved);
     }
 
@@ -102,10 +117,11 @@ public class NoteServiceImpl implements NoteService {
         return toDto(note);
     }
 
-    // Paginated retrieval with optional filtering by language, type, and search query.
+    // Paginated retrieval with optional filtering by language, type, tags, and search query.
     @Override
     public NoteListResponse getNotes(String userId, String language, String type,
                                      Double minConfidence, String searchQuery,
+                                     String tagCategory, String tagValue,
                                      int page, int pageSize) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));
@@ -115,6 +131,17 @@ public class NoteServiceImpl implements NoteService {
 
         if (searchQuery != null && !searchQuery.isBlank()) {
             notePage = noteRepository.searchNotes(user, searchQuery.trim(), pageRequest);
+        } else if (tagCategory != null && tagValue != null) {
+            // Tag-based filtering
+            if (language != null) {
+                Language lang = languageRepository.findById(language).orElse(null);
+                if (lang == null) {
+                    return emptyResponse(page, pageSize);
+                }
+                notePage = noteRepository.findByUserAndLearningLanguageAndTag(user, lang, tagCategory, tagValue, pageRequest);
+            } else {
+                notePage = noteRepository.findByUserAndTag(user, tagCategory, tagValue, pageRequest);
+            }
         } else if (language != null && type != null) {
             Language lang = languageRepository.findById(language).orElse(null);
             if (lang == null) {
@@ -145,10 +172,15 @@ public class NoteServiceImpl implements NoteService {
         return response;
     }
 
-    // Partial update (title/summary/content). Sets userEdited=true to mark this note as manually curated.
+    @Override
+    public List<String> getTagValues(String userId, String category) {
+        return noteTagRepository.findDistinctTagValuesByUserAndCategory(userId, category);
+    }
+
+    // Partial update (title/summary/content). Pass markAsUserEdited=true for user edits, false for LLM-driven updates.
     @Override
     @Transactional
-    public NoteDto updateNote(String noteId, UpdateNoteRequest updateRequest, String userId) {
+    public NoteDto updateNote(String noteId, UpdateNoteRequest updateRequest, String userId, boolean markAsUserEdited) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));
 
@@ -168,8 +200,25 @@ public class NoteServiceImpl implements NoteService {
         if (updateRequest.getNoteContent() != null) {
             note.setNoteContent(updateRequest.getNoteContent());
         }
+        if (updateRequest.getStructuredContent() != null) {
+            note.setStructuredContent(updateRequest.getStructuredContent());
+        }
+        // Replace tags if provided
+        if (updateRequest.getTags() != null) {
+            note.getTags().clear();
+            // Flush to execute orphan DELETEs before INSERTs, avoiding unique constraint violations
+            // when new tags have the same (note_id, category, value) as old ones.
+            entityManager.flush();
+            for (NoteTagDto tagDto : updateRequest.getTags()) {
+                NoteTag tag = new NoteTag();
+                tag.setNote(note);
+                tag.setTagCategory(tagDto.getCategory());
+                tag.setTagValue(tagDto.getValue());
+                note.getTags().add(tag);
+            }
+        }
 
-        note.setUserEdited(true);
+        note.setUserEdited(markAsUserEdited);
 
         Note saved = noteRepository.save(note);
         log.info("Updated note: id={}, userId={}", noteId, userId);
@@ -223,12 +272,21 @@ public class NoteServiceImpl implements NoteService {
         dto.setTitle(note.getTitle());
         dto.setSummary(note.getSummary());
         dto.setNoteContent(note.getNoteContent());
+        dto.setStructuredContent(note.getStructuredContent());
         dto.setUserEdited(note.getUserEdited());
         dto.setReviewCount(note.getReviewCount());
         dto.setLastReviewedAt(note.getLastReviewedAt());
         dto.setNextReviewAt(note.getNextReviewAt());
         dto.setCreatedAt(note.getCreatedAt());
         dto.setUpdatedAt(note.getUpdatedAt());
+
+        // Map tags
+        if (note.getTags() != null) {
+            dto.setTags(note.getTags().stream()
+                    .map(t -> new NoteTagDto(t.getTagCategory(), t.getTagValue()))
+                    .toList());
+        }
+
         return dto;
     }
 

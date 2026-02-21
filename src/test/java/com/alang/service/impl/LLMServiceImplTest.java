@@ -106,169 +106,6 @@ class LLMServiceImplTest {
         return limits;
     }
 
-    // --- extractNotes ---
-
-    @Nested
-    class ExtractNotes {
-
-        private final ObjectMapper realMapper = new ObjectMapper();
-
-        @Test
-        void returnsEmptyListWhenNoDelimiter() {
-            List<NoteDto> result = llmService.extractNotes("Just a plain reply", "ja");
-
-            assertThat(result).isEmpty();
-        }
-
-        @Test
-        void returnsEmptyListWhenEmptyNotesArray() throws Exception {
-            String raw = "Explanation\n---NOTES_JSON---\n{\"notes\":[]}";
-
-            // Use real ObjectMapper for JSON parsing tests
-            LLMServiceImpl serviceWithRealMapper = new LLMServiceImpl(
-                    llmWebClient, llmProperties, promptTemplates,
-                    userRepository, languageRepository, recentMessageRepository,
-                    conversationSummaryRepository, realMapper);
-
-            List<NoteDto> result = serviceWithRealMapper.extractNotes(raw, "ja");
-
-            assertThat(result).isEmpty();
-        }
-
-        @Test
-        void extractsValidNotes() {
-            String json = """
-                    {"notes":[
-                      {"type":"vocab","title":"水","summary":"Water","content":"水 means water in Japanese"}
-                    ]}""";
-            String raw = "Explanation\n---NOTES_JSON---\n" + json;
-
-            LLMServiceImpl serviceWithRealMapper = new LLMServiceImpl(
-                    llmWebClient, llmProperties, promptTemplates,
-                    userRepository, languageRepository, recentMessageRepository,
-                    conversationSummaryRepository, realMapper);
-
-            List<NoteDto> result = serviceWithRealMapper.extractNotes(raw, "ja");
-
-            assertThat(result).hasSize(1);
-            assertThat(result.get(0).getType()).isEqualTo(NoteType.vocab);
-            assertThat(result.get(0).getTitle()).isEqualTo("水");
-            assertThat(result.get(0).getSummary()).isEqualTo("Water");
-            assertThat(result.get(0).getLearningLanguage()).isEqualTo("ja");
-        }
-
-        @Test
-        void extractsMultipleNotes() {
-            String json = """
-                    {"notes":[
-                      {"type":"vocab","title":"水","summary":"Water","content":"Details"},
-                      {"type":"grammar","title":"て-form","summary":"Connecting form","content":"Details"}
-                    ]}""";
-            String raw = "Reply\n---NOTES_JSON---\n" + json;
-
-            LLMServiceImpl serviceWithRealMapper = new LLMServiceImpl(
-                    llmWebClient, llmProperties, promptTemplates,
-                    userRepository, languageRepository, recentMessageRepository,
-                    conversationSummaryRepository, realMapper);
-
-            List<NoteDto> result = serviceWithRealMapper.extractNotes(raw, "ja");
-
-            assertThat(result).hasSize(2);
-            assertThat(result.get(0).getType()).isEqualTo(NoteType.vocab);
-            assertThat(result.get(1).getType()).isEqualTo(NoteType.grammar);
-        }
-
-        @Test
-        void skipsNotesWithInvalidType() {
-            String json = """
-                    {"notes":[
-                      {"type":"invalid_type","title":"Test","summary":"S","content":"C"},
-                      {"type":"vocab","title":"Valid","summary":"S","content":"C"}
-                    ]}""";
-            String raw = "Reply\n---NOTES_JSON---\n" + json;
-
-            LLMServiceImpl serviceWithRealMapper = new LLMServiceImpl(
-                    llmWebClient, llmProperties, promptTemplates,
-                    userRepository, languageRepository, recentMessageRepository,
-                    conversationSummaryRepository, realMapper);
-
-            List<NoteDto> result = serviceWithRealMapper.extractNotes(raw, "ja");
-
-            assertThat(result).hasSize(1);
-            assertThat(result.get(0).getTitle()).isEqualTo("Valid");
-        }
-
-        @Test
-        void skipsNotesWithEmptyTitle() {
-            String json = """
-                    {"notes":[
-                      {"type":"vocab","title":"","summary":"S","content":"C"}
-                    ]}""";
-            String raw = "Reply\n---NOTES_JSON---\n" + json;
-
-            LLMServiceImpl serviceWithRealMapper = new LLMServiceImpl(
-                    llmWebClient, llmProperties, promptTemplates,
-                    userRepository, languageRepository, recentMessageRepository,
-                    conversationSummaryRepository, realMapper);
-
-            List<NoteDto> result = serviceWithRealMapper.extractNotes(raw, "ja");
-
-            assertThat(result).isEmpty();
-        }
-
-        @Test
-        void truncatesTitleLongerThan60Chars() {
-            String longTitle = "A".repeat(80);
-            String json = String.format(
-                    "{\"notes\":[{\"type\":\"vocab\",\"title\":\"%s\",\"summary\":\"S\",\"content\":\"C\"}]}", longTitle);
-            String raw = "Reply\n---NOTES_JSON---\n" + json;
-
-            LLMServiceImpl serviceWithRealMapper = new LLMServiceImpl(
-                    llmWebClient, llmProperties, promptTemplates,
-                    userRepository, languageRepository, recentMessageRepository,
-                    conversationSummaryRepository, realMapper);
-
-            List<NoteDto> result = serviceWithRealMapper.extractNotes(raw, "ja");
-
-            assertThat(result).hasSize(1);
-            assertThat(result.get(0).getTitle()).hasSize(60);
-        }
-
-        @Test
-        void returnsEmptyListForInvalidJson() {
-            String raw = "Reply\n---NOTES_JSON---\n{invalid json!!!}";
-
-            LLMServiceImpl serviceWithRealMapper = new LLMServiceImpl(
-                    llmWebClient, llmProperties, promptTemplates,
-                    userRepository, languageRepository, recentMessageRepository,
-                    conversationSummaryRepository, realMapper);
-
-            List<NoteDto> result = serviceWithRealMapper.extractNotes(raw, "ja");
-
-            assertThat(result).isEmpty();
-        }
-
-        @Test
-        void setsNullForEmptySummaryAndContent() {
-            String json = """
-                    {"notes":[
-                      {"type":"vocab","title":"水","summary":"","content":""}
-                    ]}""";
-            String raw = "Reply\n---NOTES_JSON---\n" + json;
-
-            LLMServiceImpl serviceWithRealMapper = new LLMServiceImpl(
-                    llmWebClient, llmProperties, promptTemplates,
-                    userRepository, languageRepository, recentMessageRepository,
-                    conversationSummaryRepository, realMapper);
-
-            List<NoteDto> result = serviceWithRealMapper.extractNotes(raw, "ja");
-
-            assertThat(result).hasSize(1);
-            assertThat(result.get(0).getSummary()).isNull();
-            assertThat(result.get(0).getNoteContent()).isNull();
-        }
-    }
-
     // --- countTokens ---
 
     @Test
@@ -366,180 +203,30 @@ class LLMServiceImplTest {
     // --- selectModel ---
 
     @Test
-    void selectModel_freeUserCasualChat_returnsCheap() {
-        ChatMessageRequest request = new ChatMessageRequest();
-        request.setIntent("casual_chat");
-        request.setDepth("normal");
-
+    void selectModel_freeUser_returnsCheap() {
         when(userRepository.findById("free-user")).thenReturn(Optional.of(freeUser));
         when(llmProperties.getModels()).thenReturn(createModels());
 
-        String model = llmService.selectModel(request, "free-user");
+        String model = llmService.selectModel("free-user");
 
         assertThat(model).isEqualTo("gpt-3.5-turbo");
     }
 
     @Test
-    void selectModel_freeUserDetailedGrammar_returnsStandard() {
-        ChatMessageRequest request = new ChatMessageRequest();
-        request.setIntent("grammar_explanation");
-        request.setDepth("detailed");
-
-        when(userRepository.findById("free-user")).thenReturn(Optional.of(freeUser));
+    void selectModel_proUser_returnsStandard() {
+        when(userRepository.findById("pro-user")).thenReturn(Optional.of(proUser));
         when(llmProperties.getModels()).thenReturn(createModels());
 
-        String model = llmService.selectModel(request, "free-user");
+        String model = llmService.selectModel("pro-user");
 
         assertThat(model).isEqualTo("gpt-4-turbo");
-    }
-
-    @Test
-    void selectModel_proUserCasualChat_returnsStandard() {
-        ChatMessageRequest request = new ChatMessageRequest();
-        request.setIntent("casual_chat");
-        request.setDepth("normal");
-
-        when(userRepository.findById("pro-user")).thenReturn(Optional.of(proUser));
-        when(llmProperties.getModels()).thenReturn(createModels());
-
-        String model = llmService.selectModel(request, "pro-user");
-
-        assertThat(model).isEqualTo("gpt-4-turbo");
-    }
-
-    @Test
-    void selectModel_proUserGrammar_returnsPremium() {
-        ChatMessageRequest request = new ChatMessageRequest();
-        request.setIntent("grammar_explanation");
-        request.setDepth("normal");
-
-        when(userRepository.findById("pro-user")).thenReturn(Optional.of(proUser));
-        when(llmProperties.getModels()).thenReturn(createModels());
-
-        String model = llmService.selectModel(request, "pro-user");
-
-        assertThat(model).isEqualTo("gpt-4");
-    }
-
-    @Test
-    void selectModel_proUserDetailed_returnsPremium() {
-        ChatMessageRequest request = new ChatMessageRequest();
-        request.setIntent("casual_chat");
-        request.setDepth("detailed");
-
-        when(userRepository.findById("pro-user")).thenReturn(Optional.of(proUser));
-        when(llmProperties.getModels()).thenReturn(createModels());
-
-        String model = llmService.selectModel(request, "pro-user");
-
-        assertThat(model).isEqualTo("gpt-4");
-    }
-
-    @Test
-    void selectModel_freeUserNonDetailedGrammar_returnsCheap() {
-        ChatMessageRequest request = new ChatMessageRequest();
-        request.setIntent("grammar_explanation");
-        request.setDepth("normal");
-
-        when(userRepository.findById("free-user")).thenReturn(Optional.of(freeUser));
-        when(llmProperties.getModels()).thenReturn(createModels());
-
-        String model = llmService.selectModel(request, "free-user");
-
-        // Free tier: educational but not detailed → cheap
-        assertThat(model).isEqualTo("gpt-3.5-turbo");
-    }
-
-    @Test
-    void selectModel_handlesNullIntentAndDepth() {
-        ChatMessageRequest request = new ChatMessageRequest();
-        // intent and depth are null
-
-        when(userRepository.findById("free-user")).thenReturn(Optional.of(freeUser));
-        when(llmProperties.getModels()).thenReturn(createModels());
-
-        String model = llmService.selectModel(request, "free-user");
-
-        assertThat(model).isEqualTo("gpt-3.5-turbo");
-    }
-
-    @Test
-    void selectModel_freeUserDetailedVocabulary_returnsStandard() {
-        ChatMessageRequest request = new ChatMessageRequest();
-        request.setIntent("vocabulary");
-        request.setDepth("detailed");
-
-        when(userRepository.findById("free-user")).thenReturn(Optional.of(freeUser));
-        when(llmProperties.getModels()).thenReturn(createModels());
-
-        String model = llmService.selectModel(request, "free-user");
-
-        assertThat(model).isEqualTo("gpt-4-turbo");
-    }
-
-    @Test
-    void selectModel_freeUserDetailedCorrectionRequest_returnsStandard() {
-        ChatMessageRequest request = new ChatMessageRequest();
-        request.setIntent("correction_request");
-        request.setDepth("detailed");
-
-        when(userRepository.findById("free-user")).thenReturn(Optional.of(freeUser));
-        when(llmProperties.getModels()).thenReturn(createModels());
-
-        String model = llmService.selectModel(request, "free-user");
-
-        assertThat(model).isEqualTo("gpt-4-turbo");
-    }
-
-    @Test
-    void selectModel_proUserCorrectionRequest_returnsPremium() {
-        ChatMessageRequest request = new ChatMessageRequest();
-        request.setIntent("correction_request");
-        request.setDepth("normal");
-
-        when(userRepository.findById("pro-user")).thenReturn(Optional.of(proUser));
-        when(llmProperties.getModels()).thenReturn(createModels());
-
-        String model = llmService.selectModel(request, "pro-user");
-
-        assertThat(model).isEqualTo("gpt-4");
-    }
-
-    @Test
-    void selectModel_proUserVocabulary_returnsPremium() {
-        ChatMessageRequest request = new ChatMessageRequest();
-        request.setIntent("vocabulary");
-        request.setDepth("brief");
-
-        when(userRepository.findById("pro-user")).thenReturn(Optional.of(proUser));
-        when(llmProperties.getModels()).thenReturn(createModels());
-
-        String model = llmService.selectModel(request, "pro-user");
-
-        assertThat(model).isEqualTo("gpt-4");
-    }
-
-    @Test
-    void selectModel_freeUserDetailedNonEducational_returnsCheap() {
-        ChatMessageRequest request = new ChatMessageRequest();
-        request.setIntent("casual_chat");
-        request.setDepth("detailed");
-
-        when(userRepository.findById("free-user")).thenReturn(Optional.of(freeUser));
-        when(llmProperties.getModels()).thenReturn(createModels());
-
-        String model = llmService.selectModel(request, "free-user");
-
-        // detailed but not educational → still cheap for free tier
-        assertThat(model).isEqualTo("gpt-3.5-turbo");
     }
 
     @Test
     void selectModel_throwsWhenUserNotFound() {
-        ChatMessageRequest request = new ChatMessageRequest();
         when(userRepository.findById("missing")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> llmService.selectModel(request, "missing"))
+        assertThatThrownBy(() -> llmService.selectModel("missing"))
                 .isInstanceOf(UserNotFoundException.class);
     }
 
@@ -622,116 +309,6 @@ class LLMServiceImplTest {
         assertThat(llmService.countTokens("A", "gpt-3.5-turbo")).isEqualTo(1);
     }
 
-    // --- extractNotes (additional coverage) ---
-
-    @Nested
-    class ExtractNotesAdditional {
-
-        private final ObjectMapper realMapper = new ObjectMapper();
-
-        private LLMServiceImpl createServiceWithRealMapper() {
-            return new LLMServiceImpl(
-                    llmWebClient, llmProperties, promptTemplates,
-                    userRepository, languageRepository, recentMessageRepository,
-                    conversationSummaryRepository, realMapper);
-        }
-
-        @Test
-        void extractsExceptionType() {
-            String json = """
-                    {"notes":[
-                      {"type":"exception","title":"Irregular verb: する","summary":"する is irregular","content":"Details"}
-                    ]}""";
-            String raw = "Reply\n---NOTES_JSON---\n" + json;
-
-            List<NoteDto> result = createServiceWithRealMapper().extractNotes(raw, "ja");
-
-            assertThat(result).hasSize(1);
-            assertThat(result.get(0).getType()).isEqualTo(NoteType.exception);
-        }
-
-        @Test
-        void extractsOtherType() {
-            String json = """
-                    {"notes":[
-                      {"type":"other","title":"Cultural context","summary":"Politeness levels","content":"Details"}
-                    ]}""";
-            String raw = "Reply\n---NOTES_JSON---\n" + json;
-
-            List<NoteDto> result = createServiceWithRealMapper().extractNotes(raw, "ja");
-
-            assertThat(result).hasSize(1);
-            assertThat(result.get(0).getType()).isEqualTo(NoteType.other);
-        }
-
-        @Test
-        void handlesNoteMissingOptionalFields() {
-            // Only type and title present, no summary or content keys
-            String json = """
-                    {"notes":[
-                      {"type":"vocab","title":"水"}
-                    ]}""";
-            String raw = "Reply\n---NOTES_JSON---\n" + json;
-
-            List<NoteDto> result = createServiceWithRealMapper().extractNotes(raw, "ja");
-
-            assertThat(result).hasSize(1);
-            assertThat(result.get(0).getTitle()).isEqualTo("水");
-            assertThat(result.get(0).getSummary()).isNull();
-            assertThat(result.get(0).getNoteContent()).isNull();
-        }
-
-        @Test
-        void handlesNotesMissingNotesKey() {
-            String json = "{\"data\":[]}";
-            String raw = "Reply\n---NOTES_JSON---\n" + json;
-
-            List<NoteDto> result = createServiceWithRealMapper().extractNotes(raw, "ja");
-
-            assertThat(result).isEmpty();
-        }
-
-        @Test
-        void handlesTypeWithWhitespaceAndCasing() {
-            String json = """
-                    {"notes":[
-                      {"type":"  VOCAB  ","title":"火","summary":"Fire","content":"C"}
-                    ]}""";
-            String raw = "Reply\n---NOTES_JSON---\n" + json;
-
-            List<NoteDto> result = createServiceWithRealMapper().extractNotes(raw, "ja");
-
-            assertThat(result).hasSize(1);
-            assertThat(result.get(0).getType()).isEqualTo(NoteType.vocab);
-        }
-
-        @Test
-        void titleExactly60CharsIsNotTruncated() {
-            String title = "A".repeat(60);
-            String json = String.format(
-                    "{\"notes\":[{\"type\":\"vocab\",\"title\":\"%s\",\"summary\":\"S\",\"content\":\"C\"}]}", title);
-            String raw = "Reply\n---NOTES_JSON---\n" + json;
-
-            List<NoteDto> result = createServiceWithRealMapper().extractNotes(raw, "ja");
-
-            assertThat(result).hasSize(1);
-            assertThat(result.get(0).getTitle()).hasSize(60);
-        }
-
-        @Test
-        void setsCorrectLanguageOnExtractedNotes() {
-            String json = """
-                    {"notes":[
-                      {"type":"vocab","title":"agua","summary":"Water","content":"C"}
-                    ]}""";
-            String raw = "Reply\n---NOTES_JSON---\n" + json;
-
-            List<NoteDto> result = createServiceWithRealMapper().extractNotes(raw, "es");
-
-            assertThat(result.get(0).getLearningLanguage()).isEqualTo("es");
-        }
-    }
-
     // --- generateReply, callLLMApi, parseApiResponse, buildConversationContext ---
 
     @Nested
@@ -802,10 +379,7 @@ class LLMServiceImplTest {
 
         private ChatMessageRequest buildRequest(String msg) {
             ChatMessageRequest request = new ChatMessageRequest();
-            request.setLanguage("ja");
             request.setMessage(msg);
-            request.setIntent("casual_chat");
-            request.setDepth("normal");
             request.setIncludeContext(false);
             return request;
         }
@@ -872,7 +446,6 @@ class LLMServiceImplTest {
             when(languageRepository.findById("xx")).thenReturn(Optional.empty());
 
             ChatMessageRequest request = buildRequest("Hi");
-            request.setLanguage("xx");
 
             assertThatThrownBy(() -> llmService.generateReply(request, "free-user"))
                     .isInstanceOf(IllegalArgumentException.class)
@@ -894,7 +467,7 @@ class LLMServiceImplTest {
 
             assertThatThrownBy(() -> llmService.generateReply(request, "free-user"))
                     .isInstanceOf(RateLimitExceededException.class)
-                    .hasMessageContaining("Daily token limit exceeded");
+                    .hasMessageContaining("Not enough tokens remaining");
         }
 
         // --- parseApiResponse (tested indirectly through generateReply) ---
@@ -1048,10 +621,10 @@ class LLMServiceImplTest {
 
             // Set up recent messages
             RecentMessage msg1 = new RecentMessage();
-            msg1.setRole("user");
+            msg1.setRole(RoleType.user);
             msg1.setContent("What is は?");
             RecentMessage msg2 = new RecentMessage();
-            msg2.setRole("assistant");
+            msg2.setRole(RoleType.assistant);
             msg2.setContent("は is a topic marker.");
             when(recentMessageRepository.findByUserAndLearningLanguageOrderByCreatedAtAsc(
                     eq(freeUser), eq(japanese), any())).thenReturn(List.of(msg1, msg2));
@@ -1130,7 +703,7 @@ class LLMServiceImplTest {
         }
 
         @Test
-        void generateReply_usesCorrectModelBasedOnRequest() {
+        void generateReply_usesStandardModelForProUser() {
             // Set up pro user mocks directly (not mockCommonDependencies which stubs free-user)
             proUser.setTotalDailyTokensUsed(0L);
             proUser.setLastTokenResetDate(LocalDateTime.now());
@@ -1144,15 +717,13 @@ class LLMServiceImplTest {
             when(llmProperties.getTokenLimits()).thenReturn(createTokenLimits());
             lenient().when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-            mockWebClientSuccess(buildApiResponse("Detailed grammar explanation", 100, 200, 300));
+            mockWebClientSuccess(buildApiResponse("Grammar explanation", 100, 200, 300));
 
             ChatMessageRequest request = buildRequest("Explain て-form in detail");
-            request.setIntent("grammar_explanation");
-            request.setDepth("detailed");
 
             LLMService.LLMResponse response = llmService.generateReply(request, "pro-user");
 
-            assertThat(response.getModelUsed()).isEqualTo("gpt-4");
+            assertThat(response.getModelUsed()).isEqualTo("gpt-4-turbo");
         }
     }
 

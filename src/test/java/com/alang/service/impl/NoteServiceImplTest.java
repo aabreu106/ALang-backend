@@ -2,6 +2,7 @@ package com.alang.service.impl;
 
 import com.alang.dto.note.NoteDto;
 import com.alang.dto.note.NoteListResponse;
+import com.alang.dto.note.NoteTagDto;
 import com.alang.dto.note.UpdateNoteRequest;
 import com.alang.entity.Language;
 import com.alang.entity.Note;
@@ -12,6 +13,7 @@ import com.alang.exception.UnauthorizedException;
 import com.alang.exception.UserNotFoundException;
 import com.alang.repository.LanguageRepository;
 import com.alang.repository.NoteRepository;
+import com.alang.repository.NoteTagRepository;
 import com.alang.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,6 +27,7 @@ import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -38,6 +41,9 @@ class NoteServiceImplTest {
 
     @Mock
     private NoteRepository noteRepository;
+
+    @Mock
+    private NoteTagRepository noteTagRepository;
 
     @Mock
     private UserRepository userRepository;
@@ -110,6 +116,33 @@ class NoteServiceImplTest {
         assertThat(result.getTitle()).isEqualTo("水");
         assertThat(result.getType()).isEqualTo(NoteType.vocab);
         verify(noteRepository).save(any(Note.class));
+    }
+
+    @Test
+    void createNote_savesWithStructuredContentAndTags() {
+        NoteDto input = new NoteDto();
+        input.setType(NoteType.vocab);
+        input.setLearningLanguage("ja");
+        input.setTitle("水");
+        input.setStructuredContent(Map.of("word", "水", "meaning", "water", "partOfSpeech", "noun"));
+        input.setTags(List.of(
+                new NoteTagDto("topic", "daily_life"),
+                new NoteTagDto("difficulty", "beginner")
+        ));
+
+        Note saved = createTestNote("note-1", "水");
+        saved.setStructuredContent(Map.of("word", "水", "meaning", "water", "partOfSpeech", "noun"));
+
+        when(userRepository.findById("user-1")).thenReturn(Optional.of(testUser));
+        when(languageRepository.findById("ja")).thenReturn(Optional.of(japanese));
+        when(languageRepository.findById("en")).thenReturn(Optional.of(english));
+        when(noteRepository.save(any(Note.class))).thenReturn(saved);
+
+        NoteDto result = noteService.createNote(input, "user-1");
+
+        assertThat(result.getStructuredContent()).containsEntry("word", "水");
+        // save called twice: once for note, once after adding tags
+        verify(noteRepository, times(2)).save(any(Note.class));
     }
 
     @Test
@@ -238,7 +271,7 @@ class NoteServiceImplTest {
         when(userRepository.findById("user-1")).thenReturn(Optional.of(testUser));
         when(noteRepository.findByUser(eq(testUser), any(Pageable.class))).thenReturn(page);
 
-        NoteListResponse result = noteService.getNotes("user-1", null, null, null, null, 0, 20);
+        NoteListResponse result = noteService.getNotes("user-1", null, null, null, null, null, null, 0, 20);
 
         assertThat(result.getNotes()).hasSize(1);
         assertThat(result.getTotalCount()).isEqualTo(1);
@@ -254,11 +287,42 @@ class NoteServiceImplTest {
                 eq(testUser), eq(japanese), eq(NoteType.vocab), any(Pageable.class)))
                 .thenReturn(page);
 
-        NoteListResponse result = noteService.getNotes("user-1", "ja", "vocab", null, null, 0, 20);
+        NoteListResponse result = noteService.getNotes("user-1", "ja", "vocab", null, null, null, null, 0, 20);
 
         assertThat(result.getNotes()).isEmpty();
         verify(noteRepository).findByUserAndLearningLanguageAndType(
                 eq(testUser), eq(japanese), eq(NoteType.vocab), any(Pageable.class));
+    }
+
+    @Test
+    void getNotes_filtersByTag() {
+        Note note = createTestNote("note-1", "水");
+        Page<Note> page = new PageImpl<>(List.of(note));
+
+        when(userRepository.findById("user-1")).thenReturn(Optional.of(testUser));
+        when(noteRepository.findByUserAndTag(eq(testUser), eq("topic"), eq("food"), any(Pageable.class)))
+                .thenReturn(page);
+
+        NoteListResponse result = noteService.getNotes("user-1", null, null, null, null, "topic", "food", 0, 20);
+
+        assertThat(result.getNotes()).hasSize(1);
+        verify(noteRepository).findByUserAndTag(eq(testUser), eq("topic"), eq("food"), any(Pageable.class));
+    }
+
+    @Test
+    void getNotes_filtersByLanguageAndTag() {
+        Page<Note> page = new PageImpl<>(List.of());
+
+        when(userRepository.findById("user-1")).thenReturn(Optional.of(testUser));
+        when(languageRepository.findById("ja")).thenReturn(Optional.of(japanese));
+        when(noteRepository.findByUserAndLearningLanguageAndTag(
+                eq(testUser), eq(japanese), eq("difficulty"), eq("beginner"), any(Pageable.class)))
+                .thenReturn(page);
+
+        NoteListResponse result = noteService.getNotes("user-1", "ja", null, null, null, "difficulty", "beginner", 0, 20);
+
+        verify(noteRepository).findByUserAndLearningLanguageAndTag(
+                eq(testUser), eq(japanese), eq("difficulty"), eq("beginner"), any(Pageable.class));
     }
 
     @Test
@@ -268,7 +332,7 @@ class NoteServiceImplTest {
         when(userRepository.findById("user-1")).thenReturn(Optional.of(testUser));
         when(noteRepository.searchNotes(eq(testUser), eq("kanji"), any(Pageable.class))).thenReturn(page);
 
-        NoteListResponse result = noteService.getNotes("user-1", null, null, null, "kanji", 0, 20);
+        NoteListResponse result = noteService.getNotes("user-1", null, null, null, "kanji", null, null, 0, 20);
 
         verify(noteRepository).searchNotes(eq(testUser), eq("kanji"), any(Pageable.class));
     }
@@ -278,7 +342,7 @@ class NoteServiceImplTest {
         when(userRepository.findById("user-1")).thenReturn(Optional.of(testUser));
         when(languageRepository.findById("xx")).thenReturn(Optional.empty());
 
-        NoteListResponse result = noteService.getNotes("user-1", "xx", null, null, null, 0, 20);
+        NoteListResponse result = noteService.getNotes("user-1", "xx", null, null, null, null, null, 0, 20);
 
         assertThat(result.getNotes()).isEmpty();
         assertThat(result.getTotalCount()).isZero();
@@ -289,10 +353,22 @@ class NoteServiceImplTest {
         when(userRepository.findById("user-1")).thenReturn(Optional.of(testUser));
         when(languageRepository.findById("ja")).thenReturn(Optional.of(japanese));
 
-        NoteListResponse result = noteService.getNotes("user-1", "ja", "invalid_type", null, null, 0, 20);
+        NoteListResponse result = noteService.getNotes("user-1", "ja", "invalid_type", null, null, null, null, 0, 20);
 
         assertThat(result.getNotes()).isEmpty();
         assertThat(result.getTotalCount()).isZero();
+    }
+
+    // --- getTagValues ---
+
+    @Test
+    void getTagValues_returnDistinctValues() {
+        when(noteTagRepository.findDistinctTagValuesByUserAndCategory("user-1", "topic"))
+                .thenReturn(List.of("food", "travel", "work"));
+
+        List<String> result = noteService.getTagValues("user-1", "topic");
+
+        assertThat(result).containsExactly("food", "travel", "work");
     }
 
     // --- updateNote ---
@@ -336,6 +412,26 @@ class NoteServiceImplTest {
         assertThat(result.getTitle()).isEqualTo("Updated Title");
         assertThat(result.getSummary()).isEqualTo("Original summary");
         assertThat(result.getNoteContent()).isEqualTo("Original content");
+    }
+
+    @Test
+    void updateNote_replacesTagsWhenProvided() {
+        Note note = createTestNote("note-1", "水");
+
+        UpdateNoteRequest update = new UpdateNoteRequest();
+        update.setTags(List.of(
+                new NoteTagDto("topic", "food"),
+                new NoteTagDto("difficulty", "beginner")
+        ));
+
+        when(userRepository.findById("user-1")).thenReturn(Optional.of(testUser));
+        when(noteRepository.findById("note-1")).thenReturn(Optional.of(note));
+        when(noteRepository.save(any(Note.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        NoteDto result = noteService.updateNote("note-1", update, "user-1");
+
+        assertThat(result.getTags()).hasSize(2);
+        assertThat(result.getUserEdited()).isTrue();
     }
 
     @Test

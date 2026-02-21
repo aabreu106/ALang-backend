@@ -3,95 +3,117 @@ package com.alang.service;
 import com.alang.dto.chat.ChatHistoryDto;
 import com.alang.dto.chat.ChatMessageRequest;
 import com.alang.dto.chat.ChatMessageResponse;
+import com.alang.dto.chat.CreateSessionRequest;
+import com.alang.dto.chat.NoteFromSessionRequest;
+import com.alang.dto.chat.SessionResponse;
+import com.alang.dto.note.NoteDto;
+
+import java.util.List;
 
 /**
  * Chat orchestration service.
  *
  * RESPONSIBILITIES:
- * - Handle incoming chat messages
+ * - Manage chat sessions (create, list)
+ * - Handle incoming chat messages within a session
  * - Call LLMService to generate replies
- * - Save messages to database (RecentMessage)
- * - Trigger note extraction (via NoteService)
- * - Trigger conversation summarization when threshold reached
- * - Return response to controller
+ * - Save messages to database (RecentMessage), linked to their session
+ * - On explicit user request: call LLMService to create or update a note from the session
  *
  * ARCHITECTURAL NOTE:
- * This service orchestrates the chat flow, but does NOT call LLM API directly.
- * All LLM interaction goes through LLMService.
+ * Notes are NOT auto-extracted on every message. The user explicitly triggers note
+ * creation via createNoteFromSession() once they are satisfied with the conversation.
+ * This service does NOT call LLM API directly — all LLM interaction goes through LLMService.
  */
 public interface ChatService {
 
     /**
-     * Process a chat message from the user.
+     * Create a new chat session for the given user.
+     * A session represents a single-topic conversation scoped to a learning language.
+     *
+     * @param request Session creation request (learning language + optional title)
+     * @param userId  Authenticated user ID
+     * @return Created session details
+     */
+    SessionResponse createSession(CreateSessionRequest request, String userId);
+
+    /**
+     * List recent sessions for a user, optionally filtered by learning language.
+     *
+     * @param userId   Authenticated user ID
+     * @param language Optional language filter (e.g. "es"). Null returns all languages.
+     * @param limit    Maximum number of sessions to return
+     * @return List of session summaries, newest first
+     */
+    List<SessionResponse> getSessions(String userId, String language, int limit);
+
+    /**
+     * Process a chat message within a session.
      *
      * FLOW:
-     * 1. Validate request (language exists, user exists)
-     * 2. Save user's message to RecentMessage table
-     * 3. Call LLMService.generateReply() to get response
-     * 4. Save assistant's reply to RecentMessage table
-     * 5. Call LLMService.extractNotes() to extract learning notes
-     * 6. Save extracted notes via NoteService
-     * 7. Check if summarization threshold reached (e.g., 10 messages)
-     * 8. If yes, call LLMService.generateSummary() and save summary
-     * 9. Delete old messages that have been summarized
-     * 10. Return ChatMessageResponse to controller
+     * 1. Validate session ownership and that it is still active
+     * 2. Save user's message to RecentMessage (linked to session)
+     * 3. Call LLMService.generateReply() — context is session-scoped
+     * 4. Strip ---TOPICS--- block from the reply
+     * 5. Save assistant's reply to RecentMessage (linked to session)
+     * 6. Extract any topic suggestions from the ---TOPICS--- block
+     * 7. Return reply + suggested topics (no auto note creation)
      *
-     * ERROR HANDLING (TODO: implement):
-     * - LLM API failure: Return friendly error message, don't save broken response
-     * - Rate limit exceeded: Inform user, suggest waiting or upgrading
-     * - Invalid language: Return error
-     *
-     * @param request User's message request
-     * @param userId Authenticated user ID
-     * @return Chat response with reply and created notes
+     * @param request ChatMessageRequest with sessionId and message
+     * @param userId  Authenticated user ID
+     * @return Reply + optional topic suggestions for the escape-hatch chips
      */
     ChatMessageResponse sendMessage(ChatMessageRequest request, String userId);
 
     /**
+     * Explicitly create a note from the session's full conversation history.
+     * Called when the user presses "Create Note".
+     *
+     * @param sessionId Session to create the note from
+     * @param request   Optional topicFocus (from a topic chip)
+     * @param userId    Authenticated user ID
+     * @return The newly created NoteDto
+     */
+    NoteDto createNoteFromSession(String sessionId, NoteFromSessionRequest request, String userId);
+
+    /**
+     * Update an existing note using the session's full conversation as context.
+     * Called when the user presses "Update Note" after additional follow-up questions.
+     * The LLM receives the current note content as a base to build on.
+     *
+     * @param sessionId Session containing the conversation context
+     * @param noteId    ID of the note to update
+     * @param request   Optional topicFocus to narrow the update
+     * @param userId    Authenticated user ID
+     * @return The updated NoteDto
+     */
+    NoteDto updateNoteFromSession(String sessionId, String noteId, NoteFromSessionRequest request, String userId);
+
+    /**
+     * Close a session, preventing further messages from being sent.
+     * Sets status to 'closed' and records closedAt timestamp.
+     *
+     * @param sessionId Session to close
+     * @param userId    Authenticated user ID
+     * @return Updated session details
+     */
+    SessionResponse closeSession(String sessionId, String userId);
+
+    /**
      * Get conversation history for a user in a specific language.
-     *
-     * ARCHITECTURAL NOTE:
-     * This returns SUMMARIES, not raw messages.
-     * Only recent messages (last 5-10) are included for context.
-     *
-     * @param userId User ID
-     * @param language Language code
-     * @param limit Max number of summaries to return
-     * @return Chat history with summaries and recent exchanges
+     * TODO: Implement in Week 4 (summarization)
      */
     ChatHistoryDto getHistory(String userId, String language, int limit);
 
     /**
-     * Check if summarization should be triggered.
-     *
-     * Triggers:
-     * - Message count threshold (e.g., every 10 messages)
-     * - Token count threshold (e.g., context exceeds 2000 tokens)
-     * - Time threshold (e.g., 1 hour since last summary)
-     *
-     * TODO: Implement configurable thresholds
-     *
-     * @param userId User ID
-     * @param language Language code
-     * @return true if summarization should run
+     * Check if summarization should be triggered for a session.
+     * TODO: Implement in Week 4
      */
-    boolean shouldTriggerSummarization(String userId, String language);
+    boolean shouldTriggerSummarization(String sessionId);
 
     /**
-     * Trigger conversation summarization.
-     *
-     * FLOW:
-     * 1. Load recent unsummarized messages
-     * 2. Call LLMService.generateSummary()
-     * 3. Save ConversationSummary to database
-     * 4. Delete summarized messages from RecentMessage table
-     * 5. Log summarization event for analytics
-     *
-     * TODO: Make this async (run in background)
-     * TODO: Add retry logic if summarization fails
-     *
-     * @param userId User ID
-     * @param language Language code
+     * Trigger conversation summarization for a session.
+     * TODO: Implement in Week 4
      */
-    void triggerSummarization(String userId, String language);
+    void triggerSummarization(String sessionId);
 }

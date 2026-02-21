@@ -72,4 +72,28 @@ public interface NoteRepository extends JpaRepository<Note, String> {
             @Param("user") User user,
             @Param("language") Language language,
             @Param("title") String title);
+
+    /**
+     * Find notes by tag (category + value).
+     * Joins through note_tags to filter notes that have a specific tag.
+     */
+    @Query("SELECT DISTINCT n FROM Note n JOIN n.tags t WHERE n.user = :user " +
+           "AND t.tagCategory = :category AND t.tagValue = :value")
+    Page<Note> findByUserAndTag(
+            @Param("user") User user,
+            @Param("category") String category,
+            @Param("value") String value,
+            Pageable pageable);
+
+    /**
+     * Find notes by language and tag.
+     */
+    @Query("SELECT DISTINCT n FROM Note n JOIN n.tags t WHERE n.user = :user " +
+           "AND n.learningLanguage = :language AND t.tagCategory = :category AND t.tagValue = :value")
+    Page<Note> findByUserAndLearningLanguageAndTag(
+            @Param("user") User user,
+            @Param("language") Language language,
+            @Param("category") String category,
+            @Param("value") String value,
+            Pageable pageable);
 }

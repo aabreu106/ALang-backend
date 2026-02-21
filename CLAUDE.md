@@ -87,7 +87,7 @@ Goal: Chat endpoint returns real LLM responses.
    - [x] Add HTTP client (WebClient) for LLM API calls
    - [x] Design prompt templates (system prompt with language tutor role)
    - [x] Implement `LLMServiceImpl.generateReply()`
-   - [x] Implement `LLMServiceImpl.selectModel()` (cheap vs premium based on intent/depth/tier)
+   - [x] Implement `LLMServiceImpl.selectModel()` (cheap vs standard based on user tier)
    - [x] Add error handling (rate limits, timeouts, retries with backoff)
 
 2. **Chat service implementation** ✅

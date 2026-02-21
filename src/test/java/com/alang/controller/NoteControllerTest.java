@@ -15,6 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 
 import java.util.Collections;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
@@ -37,10 +38,10 @@ class NoteControllerTest {
         noteList.setPage(0);
         noteList.setPageSize(20);
 
-        when(noteService.getNotes("user-1", "ja", null, null, null, 0, 20))
+        when(noteService.getNotes("user-1", "ja", null, null, null, null, null, 0, 20))
                 .thenReturn(noteList);
 
-        var response = noteController.getNotes("ja", null, null, null, 0, 20, "user-1");
+        var response = noteController.getNotes("ja", null, null, null, null, null, 0, 20, "user-1");
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isEqualTo(noteList);
@@ -49,12 +50,34 @@ class NoteControllerTest {
     @Test
     void getNotes_passesAllFiltersToService() {
         NoteListResponse noteList = new NoteListResponse();
-        when(noteService.getNotes("user-1", "ja", "vocab", 0.8, "kanji", 1, 10))
+        when(noteService.getNotes("user-1", "ja", "vocab", 0.8, "kanji", null, null, 1, 10))
                 .thenReturn(noteList);
 
-        noteController.getNotes("ja", "vocab", 0.8, "kanji", 1, 10, "user-1");
+        noteController.getNotes("ja", "vocab", 0.8, "kanji", null, null, 1, 10, "user-1");
 
-        verify(noteService).getNotes("user-1", "ja", "vocab", 0.8, "kanji", 1, 10);
+        verify(noteService).getNotes("user-1", "ja", "vocab", 0.8, "kanji", null, null, 1, 10);
+    }
+
+    @Test
+    void getNotes_passesTagFiltersToService() {
+        NoteListResponse noteList = new NoteListResponse();
+        when(noteService.getNotes("user-1", "ja", null, null, null, "topic", "food", 0, 20))
+                .thenReturn(noteList);
+
+        noteController.getNotes("ja", null, null, null, "topic", "food", 0, 20, "user-1");
+
+        verify(noteService).getNotes("user-1", "ja", null, null, null, "topic", "food", 0, 20);
+    }
+
+    @Test
+    void getTagValues_returnsOkWithValues() {
+        when(noteService.getTagValues("user-1", "topic"))
+                .thenReturn(List.of("food", "travel", "work"));
+
+        var response = noteController.getTagValues("topic", "user-1");
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsExactly("food", "travel", "work");
     }
 
     @Test

@@ -2,6 +2,8 @@ package com.alang.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
 
 /**
@@ -49,11 +51,13 @@ public class RecentMessage {
     @JoinColumn(name = "learning_language_code", nullable = false)
     private Language learningLanguage;
 
-    /**
-     * "user" or "assistant"
-     */
-    @Column(nullable = false)
-    private String role;
+    @ManyToOne
+    @JoinColumn(name = "session_id", nullable = false)
+    private ChatSession session;
+
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(nullable = false, columnDefinition = "role_type")
+    private RoleType role;
 
     /**
      * The actual message content

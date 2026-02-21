@@ -1,5 +1,6 @@
 package com.alang.repository;
 
+import com.alang.entity.ChatSession;
 import com.alang.entity.RecentMessage;
 import com.alang.entity.User;
 import com.alang.entity.Language;
@@ -67,4 +68,29 @@ public interface RecentMessageRepository extends JpaRepository<RecentMessage, St
      * Count messages for a user and learning language (to check summarization threshold).
      */
     long countByUserAndLearningLanguage(User user, Language learningLanguage);
+
+    // ---- Session-scoped queries (primary path for all new messages) ----
+
+    /**
+     * Get all messages in a session, chronological order.
+     * Used when building LLM context and when creating notes from a session.
+     */
+    List<RecentMessage> findBySessionOrderByCreatedAtAsc(ChatSession session);
+
+    /**
+     * Get recent messages in a session, paginated.
+     * Used by buildConversationContext to cap the context window size.
+     */
+    List<RecentMessage> findBySessionOrderByCreatedAtAsc(ChatSession session, Pageable pageable);
+
+    /**
+     * Count messages in a session (for summarization threshold check — Week 4).
+     */
+    long countBySession(ChatSession session);
+
+    /**
+     * Delete all messages in a session (called after summarization — Week 4).
+     */
+    @Modifying
+    void deleteBySession(ChatSession session);
 }
