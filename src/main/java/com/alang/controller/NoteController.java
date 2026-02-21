@@ -110,7 +110,7 @@ public class NoteController {
         @Valid @RequestBody UpdateNoteRequest request,
         @AuthenticationPrincipal String userId
     ) {
-        return ResponseEntity.ok(noteService.updateNote(id, request, userId));
+        return ResponseEntity.ok(noteService.updateNote(id, request, userId, true));
     }
 
     /**

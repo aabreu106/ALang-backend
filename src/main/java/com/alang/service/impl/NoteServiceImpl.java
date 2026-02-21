@@ -10,6 +10,7 @@ import com.alang.repository.NoteRepository;
 import com.alang.repository.NoteTagRepository;
 import com.alang.repository.UserRepository;
 import com.alang.service.NoteService;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -30,6 +31,7 @@ public class NoteServiceImpl implements NoteService {
     private final NoteTagRepository noteTagRepository;
     private final UserRepository userRepository;
     private final LanguageRepository languageRepository;
+    private final EntityManager entityManager;
 
     // Persist a single note, defaulting teachingLanguage to the user's app language if not provided.
     @Override
@@ -175,10 +177,10 @@ public class NoteServiceImpl implements NoteService {
         return noteTagRepository.findDistinctTagValuesByUserAndCategory(userId, category);
     }
 
-    // Partial update (title/summary/content). Sets userEdited=true to mark this note as manually curated.
+    // Partial update (title/summary/content). Pass markAsUserEdited=true for user edits, false for LLM-driven updates.
     @Override
     @Transactional
-    public NoteDto updateNote(String noteId, UpdateNoteRequest updateRequest, String userId) {
+    public NoteDto updateNote(String noteId, UpdateNoteRequest updateRequest, String userId, boolean markAsUserEdited) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));
 
@@ -204,6 +206,9 @@ public class NoteServiceImpl implements NoteService {
         // Replace tags if provided
         if (updateRequest.getTags() != null) {
             note.getTags().clear();
+            // Flush to execute orphan DELETEs before INSERTs, avoiding unique constraint violations
+            // when new tags have the same (note_id, category, value) as old ones.
+            entityManager.flush();
             for (NoteTagDto tagDto : updateRequest.getTags()) {
                 NoteTag tag = new NoteTag();
                 tag.setNote(note);
@@ -213,7 +218,7 @@ public class NoteServiceImpl implements NoteService {
             }
         }
 
-        note.setUserEdited(true);
+        note.setUserEdited(markAsUserEdited);
 
         Note saved = noteRepository.save(note);
         log.info("Updated note: id={}, userId={}", noteId, userId);

@@ -51,6 +51,10 @@ public class RecentMessage {
     @JoinColumn(name = "learning_language_code", nullable = false)
     private Language learningLanguage;
 
+    @ManyToOne
+    @JoinColumn(name = "session_id", nullable = false)
+    private ChatSession session;
+
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(nullable = false, columnDefinition = "role_type")
     private RoleType role;

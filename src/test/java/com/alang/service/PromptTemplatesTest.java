@@ -25,10 +25,10 @@ class PromptTemplatesTest {
     }
 
     @Test
-    void buildChatSystemPrompt_includesNotesDelimiter() {
+    void buildChatSystemPrompt_includesTopicsDelimiter() {
         String prompt = promptTemplates.buildChatSystemPrompt("English", "Japanese");
 
-        assertThat(prompt).contains(PromptTemplates.NOTES_DELIMITER);
+        assertThat(prompt).contains(PromptTemplates.TOPICS_DELIMITER);
     }
 
     @Test
@@ -39,96 +39,44 @@ class PromptTemplatesTest {
         assertThat(prompt).contains("Korean");
     }
 
-    // --- buildNoteExtractionPrompt ---
+    // --- stripTopicsBlock ---
 
     @Test
-    void buildNoteExtractionPrompt_includesBothLanguages() {
-        String prompt = promptTemplates.buildNoteExtractionPrompt("Spanish", "French");
+    void stripTopicsBlock_removesTopicsJson() {
+        String raw = "Here is an explanation.\n---TOPICS---\n[\"topic1\"]";
 
-        assertThat(prompt).contains("Spanish");
-        assertThat(prompt).contains("French");
-    }
-
-    @Test
-    void buildNoteExtractionPrompt_includesNoteTypes() {
-        String prompt = promptTemplates.buildNoteExtractionPrompt("English", "Japanese");
-
-        assertThat(prompt).contains("vocab");
-        assertThat(prompt).contains("grammar");
-        assertThat(prompt).contains("exception");
-        assertThat(prompt).contains("other");
-    }
-
-    // --- stripNotesBlock ---
-
-    @Test
-    void stripNotesBlock_removesNotesJson() {
-        String raw = "Here is an explanation.\n---NOTES_JSON---\n{\"notes\":[]}";
-
-        String result = PromptTemplates.stripNotesBlock(raw);
+        String result = PromptTemplates.stripTopicsBlock(raw);
 
         assertThat(result).isEqualTo("Here is an explanation.");
     }
 
     @Test
-    void stripNotesBlock_returnsFullTextWhenNoDelimiter() {
-        String raw = "Just a plain reply with no notes.";
+    void stripTopicsBlock_returnsFullTextWhenNoDelimiter() {
+        String raw = "Just a plain reply with no topics.";
 
-        String result = PromptTemplates.stripNotesBlock(raw);
+        String result = PromptTemplates.stripTopicsBlock(raw);
 
-        assertThat(result).isEqualTo("Just a plain reply with no notes.");
+        assertThat(result).isEqualTo("Just a plain reply with no topics.");
     }
 
     @Test
-    void stripNotesBlock_returnsEmptyStringForNull() {
-        assertThat(PromptTemplates.stripNotesBlock(null)).isEmpty();
+    void stripTopicsBlock_returnsEmptyStringForNull() {
+        assertThat(PromptTemplates.stripTopicsBlock(null)).isEmpty();
     }
 
     @Test
-    void stripNotesBlock_trimsWhitespace() {
-        String raw = "  Some text  \n---NOTES_JSON---\n{\"notes\":[]}";
+    void stripTopicsBlock_trimsWhitespace() {
+        String raw = "  Some text  \n---TOPICS---\n[\"topic1\"]";
 
-        String result = PromptTemplates.stripNotesBlock(raw);
+        String result = PromptTemplates.stripTopicsBlock(raw);
 
         assertThat(result).isEqualTo("Some text");
     }
 
-    // --- extractNotesJson ---
+    // --- TOPICS_DELIMITER constant ---
 
     @Test
-    void extractNotesJson_returnsJsonAfterDelimiter() {
-        String raw = "Explanation\n---NOTES_JSON---\n{\"notes\":[{\"type\":\"vocab\"}]}";
-
-        String result = PromptTemplates.extractNotesJson(raw);
-
-        assertThat(result).isEqualTo("{\"notes\":[{\"type\":\"vocab\"}]}");
-    }
-
-    @Test
-    void extractNotesJson_returnsNullWhenNoDelimiter() {
-        String raw = "Just a reply, no notes";
-
-        assertThat(PromptTemplates.extractNotesJson(raw)).isNull();
-    }
-
-    @Test
-    void extractNotesJson_returnsNullForNull() {
-        assertThat(PromptTemplates.extractNotesJson(null)).isNull();
-    }
-
-    @Test
-    void extractNotesJson_trimsWhitespace() {
-        String raw = "Text\n---NOTES_JSON---\n  {\"notes\":[]}  ";
-
-        String result = PromptTemplates.extractNotesJson(raw);
-
-        assertThat(result).isEqualTo("{\"notes\":[]}");
-    }
-
-    // --- NOTES_DELIMITER constant ---
-
-    @Test
-    void notesDelimiter_hasExpectedValue() {
-        assertThat(PromptTemplates.NOTES_DELIMITER).isEqualTo("---NOTES_JSON---");
+    void topicsDelimiter_hasExpectedValue() {
+        assertThat(PromptTemplates.TOPICS_DELIMITER).isEqualTo("---TOPICS---");
     }
 }

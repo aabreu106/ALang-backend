@@ -4,9 +4,11 @@ import com.alang.dto.chat.ChatMessageRequest;
 import com.alang.dto.chat.TokenUsageDto;
 import com.alang.dto.note.NoteDto;
 import com.alang.entity.ConversationSummary;
+import com.alang.entity.Language;
 import com.alang.entity.RecentMessage;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * ⚠️ CRITICAL: This is THE ONLY service that talks to external LLM APIs.
@@ -76,41 +78,31 @@ public interface LLMService {
     LLMResponse generateReply(ChatMessageRequest request, String userId);
 
     /**
-     * Extract structured notes from an LLM response.
+     * Generate a single structured note from a session's conversation history.
      *
-     * ARCHITECTURAL NOTE:
-     * Notes are NOT explicitly created by the user.
-     * They are AUTOMATICALLY extracted from LLM responses.
+     * Called when the user explicitly presses "Create Note" or "Update Note".
+     * Returns an unpersisted NoteDto — ChatService is responsible for persisting it.
      *
-     * How it works:
-     * 1. LLM response includes structured data (JSON or markdown)
-     * 2. Parse response to find note-worthy content (vocab, grammar rules, exceptions)
-     * 3. Extract title, explanation, examples, confidence score
-     * 4. Return list of NoteDto objects
-     * 5. ChatService will persist these to database
-     *
-     * PROMPT ENGINEERING (TODO: implement in impl):
-     * System prompt should instruct LLM to return notes in structured format:
-     *
-     * Example system prompt:
-     * "When explaining grammar or vocabulary, include a JSON block with extracted notes:
-     * {
-     *   "notes": [
-     *     {
-     *       "type": "grammar",
-     *       "title": "は vs が",
-     *       "summary": "は marks topic, が marks subject",
-     *       "examples": ["私は学生です", "誰が来ましたか"],
-     *       "confidence": 0.9
-     *     }
-     *   ]
-     * }"
-     *
-     * @param llmResponse Raw response from LLM
-     * @param language Language code (for note metadata)
-     * @return List of extracted notes (may be empty if no notes found)
+     * @param sessionMessages Ordered session messages as role→content maps
+     * @param topicFocus      Optional topic to focus on (from a topic chip). Null = general note.
+     * @param existingNote    Null for a new note; non-null for an LLM-powered update.
+     *                        When non-null, the prompt asks the LLM to update this note
+     *                        using the full conversation as context.
+     * @param learningLanguage The language being learned
+     * @param appLanguage      The user's native language (for explanations)
+     * @param userId           For token budget checking and recording
+     * @return Parsed NoteDto (not yet persisted)
+     * @throws RateLimitExceededException if user is over their token budget
+     * @throws LLMProviderException       if the LLM call fails or returns unparseable JSON
      */
-    List<NoteDto> extractNotes(String llmResponse, String language);
+    NoteDto generateNoteFromConversation(
+            List<Map<String, String>> sessionMessages,
+            String topicFocus,
+            NoteDto existingNote,
+            Language learningLanguage,
+            Language appLanguage,
+            String userId
+    );
 
     /**
      * Generate a conversation summary from recent messages.

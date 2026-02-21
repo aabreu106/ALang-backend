@@ -4,6 +4,7 @@ import com.alang.config.LLMProperties;
 import com.alang.dto.chat.ChatMessageRequest;
 import com.alang.dto.chat.TokenUsageDto;
 import com.alang.dto.note.NoteDto;
+import com.alang.entity.ChatSession;
 import com.alang.entity.ConversationSummary;
 import com.alang.entity.Language;
 import com.alang.entity.RecentMessage;
@@ -11,7 +12,9 @@ import com.alang.entity.User;
 import com.alang.entity.UserTier;
 import com.alang.exception.LLMProviderException;
 import com.alang.exception.RateLimitExceededException;
+import com.alang.exception.UnauthorizedException;
 import com.alang.exception.UserNotFoundException;
+import com.alang.repository.ChatSessionRepository;
 import com.alang.repository.ConversationSummaryRepository;
 import com.alang.repository.LanguageRepository;
 import com.alang.repository.RecentMessageRepository;
@@ -36,7 +39,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.HashSet;
 import java.util.Set;
 
 @Slf4j
@@ -51,6 +53,7 @@ public class LLMServiceImpl implements LLMService {
     private final LanguageRepository languageRepository;
     private final RecentMessageRepository recentMessageRepository;
     private final ConversationSummaryRepository conversationSummaryRepository;
+    private final ChatSessionRepository chatSessionRepository;
 
     private final ObjectMapper objectMapper;
 
@@ -65,21 +68,24 @@ public class LLMServiceImpl implements LLMService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));
 
+        // Resolve session to get language context (language is no longer in the request body)
+        ChatSession session = chatSessionRepository.findByIdAndUser(request.getSessionId(), user)
+                .orElseThrow(() -> new UnauthorizedException("Session not found or access denied"));
+
         String model = selectModelForUser(user);
 
         Language appLanguage = languageRepository.findById(user.getAppLanguageCode())
                 .orElseThrow(() -> new IllegalStateException("App language not found: " + user.getAppLanguageCode()));
-        Language targetLanguage = languageRepository.findById(request.getLanguage())
-                .orElseThrow(() -> new IllegalArgumentException("Language not supported: " + request.getLanguage()));
+        Language targetLanguage = session.getLearningLanguage();
 
         String systemPrompt = promptTemplates.buildChatSystemPrompt(
                 appLanguage.getName(), targetLanguage.getName());
 
         List<Map<String, String>> messages = new ArrayList<>();
 
-        // Include conversation context if requested (summaries + recent messages)
+        // Include session-scoped conversation context if requested
         if (request.getIncludeContext()) {
-            messages.addAll(buildConversationContext(user, request.getLanguage()));
+            messages.addAll(buildConversationContext(session));
         }
 
         messages.add(Map.of("role", "user", "content", request.getMessage()));
@@ -106,34 +112,71 @@ public class LLMServiceImpl implements LLMService {
     }
 
     @Override
-    public List<NoteDto> extractNotes(String llmResponse, String language) {
-        String json = PromptTemplates.extractNotesJson(llmResponse);
-        if (json == null) {
-            log.debug("No notes delimiter found in LLM response for language={}", language);
-            return List.of();
+    public NoteDto generateNoteFromConversation(
+            List<Map<String, String>> sessionMessages,
+            String topicFocus,
+            NoteDto existingNote,
+            Language learningLanguage,
+            Language appLanguage,
+            String userId) {
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException(userId));
+
+        String model = selectModelForUser(user);
+
+        String systemPrompt = promptTemplates.buildNoteCreationSystemPrompt(
+                appLanguage.getName(), learningLanguage.getName());
+
+        String userPrompt;
+        if (existingNote != null) {
+            String existingNoteJson;
+            try {
+                existingNoteJson = objectMapper.writeValueAsString(existingNote);
+            } catch (JsonProcessingException e) {
+                log.warn("Failed to serialize existing note for update prompt, proceeding without it");
+                existingNoteJson = "{}";
+            }
+            userPrompt = promptTemplates.buildNoteUpdateUserPrompt(sessionMessages, existingNoteJson, topicFocus);
+        } else {
+            userPrompt = promptTemplates.buildNoteCreationUserPrompt(sessionMessages, topicFocus);
         }
 
+        // Token budget check
+        int estimatedTokens = countTokens(systemPrompt, model) + countTokens(userPrompt, model);
+        if (!checkTokenBudget(userId, estimatedTokens)) {
+            long remaining = Math.max(0, getDailyLimit(user) - user.getTotalDailyTokensUsed());
+            throw new RateLimitExceededException(
+                    "Not enough tokens remaining for note creation. Please try again tomorrow.", remaining);
+        }
+
+        // Single user message containing the full conversation transcript
+        List<Map<String, String>> messages = List.of(Map.of("role", "user", "content", userPrompt));
+
+        LLMApiResponse apiResponse = callLLMApi(model, systemPrompt, messages);
+        recordTokenUsage(userId, apiResponse.tokenUsage());
+
+        NoteDto note = parseNoteCreationResponse(apiResponse.content(), learningLanguage.getCode());
+        note.setLearningLanguage(learningLanguage.getCode());
+        note.setTeachingLanguage(appLanguage.getCode());
+
+        log.info("Generated note from conversation: userId={}, language={}, topic={}, model={}",
+                userId, learningLanguage.getCode(), topicFocus, model);
+
+        return note;
+    }
+
+    private NoteDto parseNoteCreationResponse(String json, String language) {
         try {
-            JsonNode root = objectMapper.readTree(json);
-            JsonNode notesArray = root.path("notes");
-            if (!notesArray.isArray() || notesArray.isEmpty()) {
-                return List.of();
+            JsonNode root = objectMapper.readTree(json.trim());
+            NoteDto note = parseNoteNode(root, language);
+            if (note == null) {
+                throw new LLMProviderException("LLM returned an invalid note structure for language=" + language);
             }
-
-            List<NoteDto> notes = new ArrayList<>();
-            Set<String> seenTitles = new HashSet<>();
-            for (JsonNode noteNode : notesArray) {
-                NoteDto note = parseNoteNode(noteNode, language);
-                if (note != null && seenTitles.add(note.getTitle().toLowerCase())) {
-                    notes.add(note);
-                }
-            }
-
-            log.info("Extracted {} notes from LLM response for language={}", notes.size(), language);
-            return notes;
+            return note;
         } catch (JsonProcessingException e) {
-            log.warn("Failed to parse notes JSON for language={}: {}", language, e.getMessage());
-            return List.of();
+            log.warn("Failed to parse note creation JSON for language={}: {}", language, e.getMessage());
+            throw new LLMProviderException("LLM returned unparseable JSON for note creation", e);
         }
     }
 
@@ -264,22 +307,21 @@ public class LLMServiceImpl implements LLMService {
     // ---- Private helpers ----
 
     /**
-     * Build conversation context from summaries and recent messages.
-     * Returns a list of message maps ready to be sent to the LLM.
+     * Build session-scoped conversation context from summaries and recent messages.
+     * Messages are filtered to the current session only — not user+language globally.
+     *
+     * NOTE (Week 4): When session-scoped ConversationSummary is implemented, the summary
+     * query here should also be session-scoped. For now, summaries are loaded by
+     * user+language as a placeholder.
      */
-    private List<Map<String, String>> buildConversationContext(User user, String learningLanguageCode) {
-        Language learningLanguage = languageRepository.findById(learningLanguageCode).orElse(null);
-        if (learningLanguage == null) {
-            log.warn("Language not found: {}, skipping context", learningLanguageCode);
-            return List.of();
-        }
-
+    private List<Map<String, String>> buildConversationContext(ChatSession session) {
         List<Map<String, String>> contextMessages = new ArrayList<>();
 
-        // Load recent summaries (newest first) and prepend as a system-level context block
+        // Load recent summaries (placeholder: user+language scoped until Week 4 adds session_id to summaries)
         List<ConversationSummary> summaries = conversationSummaryRepository
                 .findByUserAndLearningLanguageOrderByCreatedAtDesc(
-                        user, learningLanguage, PageRequest.of(0, MAX_CONTEXT_SUMMARIES));
+                        session.getUser(), session.getLearningLanguage(),
+                        PageRequest.of(0, MAX_CONTEXT_SUMMARIES));
 
         if (!summaries.isEmpty()) {
             StringBuilder summaryBlock = new StringBuilder("Previous conversation context:\n");
@@ -290,7 +332,43 @@ public class LLMServiceImpl implements LLMService {
             contextMessages.add(Map.of("role", "system", "content", summaryBlock.toString()));
         }
 
-        // Load recent messages (oldest first for chronological order)
+        // Load recent messages scoped to this session (not user+language)
+        List<RecentMessage> recentMessages = recentMessageRepository
+                .findBySessionOrderByCreatedAtAsc(session, PageRequest.of(0, MAX_CONTEXT_MESSAGES));
+
+        for (RecentMessage msg : recentMessages) {
+            contextMessages.add(Map.of("role", msg.getRole().name(), "content", msg.getContent()));
+        }
+
+        return contextMessages;
+    }
+
+    /**
+     * Legacy overload kept for Week 4 summarization scheduler.
+     * New code should use {@link #buildConversationContext(ChatSession)}.
+     */
+    @SuppressWarnings("unused") // Reserved for Week 4 summarization
+    private List<Map<String, String>> buildConversationContext(User user, String learningLanguageCode) {
+        Language learningLanguage = languageRepository.findById(learningLanguageCode).orElse(null);
+        if (learningLanguage == null) {
+            log.warn("Language not found: {}, skipping context", learningLanguageCode);
+            return List.of();
+        }
+
+        List<Map<String, String>> contextMessages = new ArrayList<>();
+
+        List<ConversationSummary> summaries = conversationSummaryRepository
+                .findByUserAndLearningLanguageOrderByCreatedAtDesc(
+                        user, learningLanguage, PageRequest.of(0, MAX_CONTEXT_SUMMARIES));
+
+        if (!summaries.isEmpty()) {
+            StringBuilder summaryBlock = new StringBuilder("Previous conversation context:\n");
+            for (int i = summaries.size() - 1; i >= 0; i--) {
+                summaryBlock.append("- ").append(summaries.get(i).getSummaryText()).append("\n");
+            }
+            contextMessages.add(Map.of("role", "system", "content", summaryBlock.toString()));
+        }
+
         List<RecentMessage> recentMessages = recentMessageRepository
                 .findByUserAndLearningLanguageOrderByCreatedAtAsc(
                         user, learningLanguage, PageRequest.of(0, MAX_CONTEXT_MESSAGES));

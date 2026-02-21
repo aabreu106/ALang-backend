@@ -1,40 +1,32 @@
 package com.alang.dto.chat;
 
-import com.alang.dto.note.NotePreviewDto;
 import lombok.Data;
 import java.util.List;
 
 /**
- * Response DTO for POST /chat/message
+ * Response DTO for POST /chat/sessions/{sessionId}/message
  *
  * ARCHITECTURAL NOTE:
- * - Frontend NEVER sees raw LLM response
- * - Backend may post-process, sanitize, or enhance the reply
- * - Notes are automatically extracted by backend (user didn't request them explicitly)
+ * Notes are no longer auto-created on every message. The user explicitly
+ * triggers note creation via POST /chat/sessions/{sessionId}/note.
+ *
+ * suggestedTopics is populated only when the LLM detects 3+ distinct learnable
+ * topics in its response (broad questions). The frontend renders these as chips
+ * the user can click to create a focused note for each topic.
  */
 @Data
 public class ChatMessageResponse {
-    /**
-     * The actual reply to show to the user.
-     * This has been processed/sanitized by backend.
-     */
+
     private String reply;
 
     /**
-     * Notes that were automatically created during this conversation turn.
-     * User can choose to review/edit these later.
+     * Non-null only when the LLM returned a ---TOPICS--- block.
+     * Each entry is a short topic title (≤40 chars).
+     * Frontend renders these as "Create note for: [topic]" chips.
      */
-    private List<NotePreviewDto> createdNotes;
+    private List<String> suggestedTopics;
 
-    /**
-     * Optional: Token usage for this request (for transparency/debugging)
-     * TODO: Implement token tracking in LLMService
-     */
     private TokenUsageDto tokenUsage;
 
-    /**
-     * Optional: Which model was used (for transparency)
-     * Example: "gpt-4", "claude-3-sonnet"
-     */
     private String modelUsed;
 }

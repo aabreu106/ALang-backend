@@ -109,7 +109,7 @@ public interface NoteService {
      * @param userId User ID (for authorization)
      * @return Updated note
      */
-    NoteDto updateNote(String noteId, UpdateNoteRequest updateRequest, String userId);
+    NoteDto updateNote(String noteId, UpdateNoteRequest updateRequest, String userId, boolean markAsUserEdited);
 
     /**
      * Delete a note.
