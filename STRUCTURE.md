@@ -11,7 +11,7 @@ ALang-backend/
 │   │   ├── AlangApplication.java              # Main Spring Boot application
 │   │   │
 │   │   ├── controller/                        # HTTP Layer (THIN - no business logic)
-│   │   │   ├── AuthController.java            # POST /auth/login, /auth/signup
+│   │   │   ├── UserController.java            # POST /user/login, /user/signup, GET /user/me
 │   │   │   ├── ChatController.java            # POST /chat/message ⚠️ Does NOT call LLM
 │   │   │   ├── NoteController.java            # GET/PATCH/DELETE /notes
 │   │   │   ├── ReviewController.java          # GET /review/queue, POST /notes/reviewed
@@ -22,7 +22,7 @@ ALang-backend/
 │   │   │   ├── ChatService.java               # Chat orchestration, summarization
 │   │   │   ├── NoteService.java               # Note CRUD, de-duplication
 │   │   │   ├── ReviewService.java             # Spaced repetition (SM-2 algorithm)
-│   │   │   ├── AuthService.java               # Authentication, JWT generation
+│   │   │   ├── UserService.java               # Authentication, JWT generation
 │   │   │   └── impl/                          # Service implementations (stubs)
 │   │   │       ├── LLMServiceImpl.java
 │   │   │       └── ChatServiceImpl.java

@@ -1,10 +1,11 @@
 package com.alang.controller;
 
+import com.alang.dto.auth.AddLanguageRequest;
 import com.alang.dto.auth.AuthResponse;
 import com.alang.dto.auth.LoginRequest;
 import com.alang.dto.auth.SignupRequest;
 import com.alang.dto.auth.UserResponse;
-import com.alang.service.AuthService;
+import com.alang.service.UserService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -18,13 +19,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class AuthControllerTest {
+class UserControllerTest {
 
     @Mock
-    private AuthService authService;
+    private UserService userService;
 
     @InjectMocks
-    private AuthController authController;
+    private UserController userController;
 
     @Test
     void signup_returnsCreatedStatus() {
@@ -36,13 +37,13 @@ class AuthControllerTest {
         request.setTargetLanguageCodes(List.of("ja"));
 
         AuthResponse authResponse = new AuthResponse("token-123", "user-1", "test@example.com", "Test User");
-        when(authService.signup(request)).thenReturn(authResponse);
+        when(userService.signup(request)).thenReturn(authResponse);
 
-        var response = authController.signup(request);
+        var response = userController.signup(request);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(response.getBody()).isEqualTo(authResponse);
-        verify(authService).signup(request);
+        verify(userService).signup(request);
     }
 
     @Test
@@ -52,13 +53,13 @@ class AuthControllerTest {
         request.setPassword("password123");
 
         AuthResponse authResponse = new AuthResponse("token-456", "user-1", "test@example.com", "Test User");
-        when(authService.login(request)).thenReturn(authResponse);
+        when(userService.login(request)).thenReturn(authResponse);
 
-        var response = authController.login(request);
+        var response = userController.login(request);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isEqualTo(authResponse);
-        verify(authService).login(request);
+        verify(userService).login(request);
     }
 
     @Test
@@ -71,29 +72,51 @@ class AuthControllerTest {
         userResponse.setAppLanguage("en");
         userResponse.setTargetLanguages(List.of("ja"));
 
-        when(authService.getCurrentUser(userId)).thenReturn(userResponse);
+        when(userService.getCurrentUser(userId)).thenReturn(userResponse);
 
-        var response = authController.getCurrentUser(userId);
+        var response = userController.getCurrentUser(userId);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isEqualTo(userResponse);
-        verify(authService).getCurrentUser(userId);
+        verify(userService).getCurrentUser(userId);
     }
 
     @Test
-    void signup_delegatesToAuthService() {
+    void addTargetLanguage_returnsOkWithUpdatedUserResponse() {
+        String userId = "user-1";
+        AddLanguageRequest request = new AddLanguageRequest();
+        request.setLanguageCode("ja");
+
+        UserResponse userResponse = new UserResponse();
+        userResponse.setUserId(userId);
+        userResponse.setEmail("test@example.com");
+        userResponse.setDisplayName("Test User");
+        userResponse.setAppLanguage("en");
+        userResponse.setTargetLanguages(List.of("ja"));
+
+        when(userService.addTargetLanguage(userId, "ja")).thenReturn(userResponse);
+
+        var response = userController.addTargetLanguage(userId, request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isEqualTo(userResponse);
+        verify(userService).addTargetLanguage(userId, "ja");
+    }
+
+    @Test
+    void signup_delegatesToUserService() {
         SignupRequest request = new SignupRequest();
         request.setEmail("new@example.com");
         request.setPassword("securepass");
         request.setDisplayName("New User");
         request.setAppLanguageCode("ja");
 
-        when(authService.signup(request)).thenReturn(
+        when(userService.signup(request)).thenReturn(
                 new AuthResponse("token", "user-2", "new@example.com", "New User"));
 
-        authController.signup(request);
+        userController.signup(request);
 
-        verify(authService, times(1)).signup(request);
-        verifyNoMoreInteractions(authService);
+        verify(userService, times(1)).signup(request);
+        verifyNoMoreInteractions(userService);
     }
 }

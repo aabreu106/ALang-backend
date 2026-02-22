@@ -2,6 +2,7 @@ package com.alang.dto.auth;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 import java.util.List;
@@ -24,5 +25,6 @@ public class SignupRequest {
     private String appLanguageCode; // e.g., "en", "ja"
 
     // Languages the user wants to learn
+    @NotEmpty
     private List<String> targetLanguageCodes; // e.g., ["ja", "es"]
 }

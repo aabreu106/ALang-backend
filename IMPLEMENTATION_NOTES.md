@@ -18,7 +18,7 @@ This document tracks what needs to be implemented and in what order.
    - [ ] Implement `JwtTokenProvider` (generate/validate tokens)
    - [ ] Implement `JwtAuthenticationFilter`
    - [ ] Wire up in `SecurityConfig`
-   - [ ] Complete `AuthServiceImpl`
+   - [ ] Complete `UserServiceImpl`
    - [ ] Test login/signup flow
 
 3. **Basic Testing**
