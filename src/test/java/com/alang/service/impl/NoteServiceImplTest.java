@@ -15,6 +15,7 @@ import com.alang.repository.LanguageRepository;
 import com.alang.repository.NoteRepository;
 import com.alang.repository.NoteTagRepository;
 import com.alang.repository.UserRepository;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -50,6 +51,9 @@ class NoteServiceImplTest {
 
     @Mock
     private LanguageRepository languageRepository;
+
+    @Mock
+    private EntityManager entityManager;
 
     @InjectMocks
     private NoteServiceImpl noteService;
@@ -386,7 +390,7 @@ class NoteServiceImplTest {
         when(noteRepository.findById("note-1")).thenReturn(Optional.of(note));
         when(noteRepository.save(any(Note.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        NoteDto result = noteService.updateNote("note-1", update, "user-1");
+        NoteDto result = noteService.updateNote("note-1", update, "user-1", true);
 
         assertThat(result.getTitle()).isEqualTo("New Title");
         assertThat(result.getSummary()).isEqualTo("New summary");
@@ -407,7 +411,7 @@ class NoteServiceImplTest {
         when(noteRepository.findById("note-1")).thenReturn(Optional.of(note));
         when(noteRepository.save(any(Note.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        NoteDto result = noteService.updateNote("note-1", update, "user-1");
+        NoteDto result = noteService.updateNote("note-1", update, "user-1", true);
 
         assertThat(result.getTitle()).isEqualTo("Updated Title");
         assertThat(result.getSummary()).isEqualTo("Original summary");
@@ -428,7 +432,7 @@ class NoteServiceImplTest {
         when(noteRepository.findById("note-1")).thenReturn(Optional.of(note));
         when(noteRepository.save(any(Note.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        NoteDto result = noteService.updateNote("note-1", update, "user-1");
+        NoteDto result = noteService.updateNote("note-1", update, "user-1", true);
 
         assertThat(result.getTags()).hasSize(2);
         assertThat(result.getUserEdited()).isTrue();
@@ -445,7 +449,7 @@ class NoteServiceImplTest {
         when(userRepository.findById("user-1")).thenReturn(Optional.of(testUser));
         when(noteRepository.findById("note-1")).thenReturn(Optional.of(note));
 
-        assertThatThrownBy(() -> noteService.updateNote("note-1", new UpdateNoteRequest(), "user-1"))
+        assertThatThrownBy(() -> noteService.updateNote("note-1", new UpdateNoteRequest(), "user-1", true))
                 .isInstanceOf(UnauthorizedException.class);
     }
 
