@@ -40,9 +40,9 @@ public class SecurityConfig {
             )
 
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/auth/login", "/auth/signup").permitAll()
+                .requestMatchers("/user/login", "/user/signup").permitAll()
                 .requestMatchers("/meta/**").permitAll()
-                .requestMatchers("/auth/me").authenticated()
+                .requestMatchers("/user/me").authenticated()
                 .requestMatchers("/chat/**").authenticated()
                 .requestMatchers("/notes/**").authenticated()
                 .requestMatchers("/review/**").authenticated()

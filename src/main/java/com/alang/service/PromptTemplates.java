@@ -65,7 +65,7 @@ public class PromptTemplates {
         if (topicFocus != null && !topicFocus.isBlank()) {
             sb.append("Create a study note specifically about: ").append(topicFocus.trim()).append("\n\n");
         } else {
-            sb.append("Create a study note capturing the most important concept from this conversation.\n\n");
+            sb.append("Create a study note capturing the most important concepts from this conversation.\n\n");
         }
         appendConversation(sb, messages);
         return sb.toString();
@@ -203,6 +203,7 @@ public class PromptTemplates {
             - "content" is the full explanation with examples. Match the quality of a good tutor explanation.
             - "structured" is required. Always include it, even if some fields are empty strings or empty arrays.
             - "tags" is an array of 1-4 tags using the categories and values listed above. Lowercase values.
+            - Be sure to include any example sentences from the assistant's explanations in the "exampleSentences" field, even if they are simple or repetitive. Examples are crucial for learning.
             - Write "summary" and "content" in the learner's native language, with inline target-language examples.
             - Return ONLY the JSON object. No surrounding text, no markdown code fences.
             """;

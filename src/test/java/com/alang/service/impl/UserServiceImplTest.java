@@ -10,6 +10,7 @@ import com.alang.exception.EmailAlreadyExistsException;
 import com.alang.exception.InvalidCredentialsException;
 import com.alang.exception.InvalidTokenException;
 import com.alang.exception.UserNotFoundException;
+import com.alang.repository.LanguageRepository;
 import com.alang.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,8 +18,11 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -28,10 +32,13 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class AuthServiceImplTest {
+class UserServiceImplTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private LanguageRepository languageRepository;
 
     @Mock
     private PasswordEncoder passwordEncoder;
@@ -40,7 +47,7 @@ class AuthServiceImplTest {
     private JwtTokenProvider jwtTokenProvider;
 
     @InjectMocks
-    private AuthServiceImpl authService;
+    private UserServiceImpl userService;
 
     // --- signup ---
 
@@ -62,7 +69,7 @@ class AuthServiceImplTest {
         });
         when(jwtTokenProvider.generateToken("user-1")).thenReturn("jwt-token");
 
-        AuthResponse response = authService.signup(request);
+        AuthResponse response = userService.signup(request);
 
         assertThat(response.getToken()).isEqualTo("jwt-token");
         assertThat(response.getUserId()).isEqualTo("user-1");
@@ -87,7 +94,7 @@ class AuthServiceImplTest {
         });
         when(jwtTokenProvider.generateToken(any())).thenReturn("token");
 
-        authService.signup(request);
+        userService.signup(request);
 
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(captor.capture());
@@ -112,7 +119,7 @@ class AuthServiceImplTest {
         });
         when(jwtTokenProvider.generateToken(any())).thenReturn("token");
 
-        authService.signup(request);
+        userService.signup(request);
 
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(captor.capture());
@@ -129,7 +136,7 @@ class AuthServiceImplTest {
 
         when(userRepository.existsByEmail("existing@example.com")).thenReturn(true);
 
-        assertThatThrownBy(() -> authService.signup(request))
+        assertThatThrownBy(() -> userService.signup(request))
                 .isInstanceOf(EmailAlreadyExistsException.class);
 
         verify(userRepository, never()).save(any());
@@ -153,7 +160,7 @@ class AuthServiceImplTest {
         when(passwordEncoder.matches("password123", "hashed")).thenReturn(true);
         when(jwtTokenProvider.generateToken("user-1")).thenReturn("jwt-token");
 
-        AuthResponse response = authService.login(request);
+        AuthResponse response = userService.login(request);
 
         assertThat(response.getToken()).isEqualTo("jwt-token");
         assertThat(response.getUserId()).isEqualTo("user-1");
@@ -167,7 +174,7 @@ class AuthServiceImplTest {
 
         when(userRepository.findByEmail("unknown@example.com")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> authService.login(request))
+        assertThatThrownBy(() -> userService.login(request))
                 .isInstanceOf(InvalidCredentialsException.class)
                 .hasMessage("Invalid email or password");
     }
@@ -186,7 +193,7 @@ class AuthServiceImplTest {
         when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("wrongPassword", "hashed")).thenReturn(false);
 
-        assertThatThrownBy(() -> authService.login(request))
+        assertThatThrownBy(() -> userService.login(request))
                 .isInstanceOf(InvalidCredentialsException.class)
                 .hasMessage("Invalid email or password");
     }
@@ -204,7 +211,7 @@ class AuthServiceImplTest {
 
         when(userRepository.findById("user-1")).thenReturn(Optional.of(user));
 
-        UserResponse response = authService.getCurrentUser("user-1");
+        UserResponse response = userService.getCurrentUser("user-1");
 
         assertThat(response.getUserId()).isEqualTo("user-1");
         assertThat(response.getEmail()).isEqualTo("test@example.com");
@@ -217,8 +224,70 @@ class AuthServiceImplTest {
     void getCurrentUser_throwsWhenUserNotFound() {
         when(userRepository.findById("missing")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> authService.getCurrentUser("missing"))
+        assertThatThrownBy(() -> userService.getCurrentUser("missing"))
                 .isInstanceOf(UserNotFoundException.class);
+    }
+
+    // --- addTargetLanguage ---
+
+    @Test
+    void addTargetLanguage_addsLanguageAndReturnsUpdatedUser() {
+        User user = new User();
+        user.setId("user-1");
+        user.setEmail("test@example.com");
+        user.setDisplayName("Test User");
+        user.setAppLanguageCode("en");
+        user.setTargetLanguageCodes(new ArrayList<>(List.of("es")));
+
+        when(userRepository.findById("user-1")).thenReturn(Optional.of(user));
+        when(languageRepository.existsById("ja")).thenReturn(true);
+        when(userRepository.save(user)).thenReturn(user);
+
+        UserResponse response = userService.addTargetLanguage("user-1", "ja");
+
+        assertThat(response.getTargetLanguages()).containsExactlyInAnyOrder("es", "ja");
+        verify(userRepository).save(user);
+    }
+
+    @Test
+    void addTargetLanguage_isIdempotentWhenLanguageAlreadyPresent() {
+        User user = new User();
+        user.setId("user-1");
+        user.setEmail("test@example.com");
+        user.setDisplayName("Test User");
+        user.setAppLanguageCode("en");
+        user.setTargetLanguageCodes(new ArrayList<>(List.of("ja")));
+
+        when(userRepository.findById("user-1")).thenReturn(Optional.of(user));
+        when(languageRepository.existsById("ja")).thenReturn(true);
+
+        UserResponse response = userService.addTargetLanguage("user-1", "ja");
+
+        assertThat(response.getTargetLanguages()).containsExactly("ja");
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void addTargetLanguage_throwsWhenUserNotFound() {
+        when(userRepository.findById("missing")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userService.addTargetLanguage("missing", "ja"))
+                .isInstanceOf(UserNotFoundException.class);
+    }
+
+    @Test
+    void addTargetLanguage_throwsWhenLanguageCodeNotRecognized() {
+        User user = new User();
+        user.setId("user-1");
+        user.setTargetLanguageCodes(new ArrayList<>());
+
+        when(userRepository.findById("user-1")).thenReturn(Optional.of(user));
+        when(languageRepository.existsById("xx")).thenReturn(false);
+
+        assertThatThrownBy(() -> userService.addTargetLanguage("user-1", "xx"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
+                        .isEqualTo(HttpStatus.NOT_FOUND));
     }
 
     // --- generateToken ---
@@ -227,7 +296,7 @@ class AuthServiceImplTest {
     void generateToken_delegatesToJwtTokenProvider() {
         when(jwtTokenProvider.generateToken("user-1")).thenReturn("generated-token");
 
-        String token = authService.generateToken("user-1");
+        String token = userService.generateToken("user-1");
 
         assertThat(token).isEqualTo("generated-token");
     }
@@ -239,7 +308,7 @@ class AuthServiceImplTest {
         when(jwtTokenProvider.validateToken("valid-token")).thenReturn(true);
         when(jwtTokenProvider.getUserIdFromToken("valid-token")).thenReturn("user-1");
 
-        String userId = authService.validateToken("valid-token");
+        String userId = userService.validateToken("valid-token");
 
         assertThat(userId).isEqualTo("user-1");
     }
@@ -248,7 +317,7 @@ class AuthServiceImplTest {
     void validateToken_throwsForInvalidToken() {
         when(jwtTokenProvider.validateToken("bad-token")).thenReturn(false);
 
-        assertThatThrownBy(() -> authService.validateToken("bad-token"))
+        assertThatThrownBy(() -> userService.validateToken("bad-token"))
                 .isInstanceOf(InvalidTokenException.class)
                 .hasMessage("Invalid or expired token");
     }

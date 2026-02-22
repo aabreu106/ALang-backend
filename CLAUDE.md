@@ -43,7 +43,8 @@ Key service: `LLMService` is the ONLY place that calls external LLM APIs. `ChatS
 ## API Endpoints (v1)
 
 ```
-POST /auth/signup          POST /auth/login           GET  /auth/me
+POST /user/signup          POST /user/login           GET  /user/me
+POST /user/me/languages
 POST /chat/message         GET  /chat/history
 GET  /notes                GET  /notes/{id}           PATCH /notes/{id}
 GET  /review/queue         POST /notes/reviewed
@@ -71,9 +72,9 @@ Goal: Database running, auth working end-to-end.
 2. **JWT authentication** ✅
    - [x] Create `JwtTokenProvider` (generate token, validate token, extract user ID)
    - [x] Create `JwtAuthenticationFilter` (reads Authorization header, sets SecurityContext)
-   - [x] Create `AuthServiceImpl` (signup with BCrypt, login, getCurrentUser)
-   - [x] Wire JWT filter into `SecurityConfig` (public: `/auth/**`, `/meta/**`; protected: everything else)
-   - [x] Wire `AuthController` to call `AuthService` (remove stub exceptions)
+   - [x] Create `UserServiceImpl` (signup with BCrypt, login, getCurrentUser)
+   - [x] Wire JWT filter into `SecurityConfig` (public: `/user/**`, `/meta/**`; protected: everything else)
+   - [x] Wire `UserController` to call `UserService` (remove stub exceptions)
 
 3. **Basic testing** ✅
    - [x] Test JWT generation/validation
@@ -102,17 +103,18 @@ Goal: Chat endpoint returns real LLM responses.
 
 ### Week 3 — Note Extraction
 
-Goal: Chat responses automatically produce structured notes.
+Goal: Generate a note froma chat session/conversation.
 
 1. **Prompt engineering for notes** ✅
-   - [x] Design system prompt that instructs LLM to return structured JSON notes alongside explanations
+   - [x] Design system prompt that instructs LLM to return a proper response for the user's language-learning related questions
+   - [x] Design system prompt that instructs LLM to return a structured JSON note based on conversation session
    - [x] Test structured output format across languages
    - [x] Iterate on prompt for quality and consistency
 
 2. **Note extraction logic** ✅
    - [x] Implement `LLMServiceImpl.extractNotes()` (parse JSON from LLM response)
    - [x] Validate extracted note data (type, title, confidence)
-   - [x] Handle cases where LLM returns no extractable notes
+   - [x] Handle updating the note of the current
 
 3. **Note service** ✅
    - [x] Create `NoteServiceImpl` (CRUD operations)

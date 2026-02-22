@@ -46,7 +46,7 @@ This codebase provides:
 ```
 com.alang/
 ├── controller/        # HTTP layer (THIN)
-│   ├── AuthController
+│   ├── UserController
 │   ├── ChatController      ⚠️ Does NOT call LLM
 │   ├── NoteController
 │   ├── ReviewController
@@ -57,7 +57,7 @@ com.alang/
 │   ├── ChatService         # Orchestrates chat flow
 │   ├── NoteService         # Manages auto-extracted notes
 │   ├── ReviewService       # Spaced repetition (Anki-style)
-│   └── AuthService
+│   └── UserService
 │
 ├── repository/       # Data access layer
 │   ├── UserRepository
@@ -181,11 +181,12 @@ See `ReviewService.java` for algorithm details.
 
 ## 📡 API Endpoints
 
-### Auth
+### User
 ```
-POST /auth/signup       # Register new user
-POST /auth/login        # Get JWT token
-GET  /auth/me           # Get current user profile
+POST /user/signup       # Register new user
+POST /user/login        # Get JWT token
+GET  /user/me           # Get current user profile
+POST /user/me/languages # Add a target language
 ```
 
 ### Chat (Core Feature)

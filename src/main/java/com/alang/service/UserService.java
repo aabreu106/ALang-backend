@@ -19,7 +19,7 @@ import com.alang.dto.auth.UserResponse;
  * TODO: Implement email verification
  * TODO: Implement password reset flow
  */
-public interface AuthService {
+public interface UserService {
 
     /**
      * Register a new user.
@@ -62,6 +62,17 @@ public interface AuthService {
      * @return User profile
      */
     UserResponse getCurrentUser(String userId);
+
+    /**
+     * Add a target language to the current user's profile.
+     *
+     * @param userId       Authenticated user ID (from JWT)
+     * @param languageCode ISO 639-1 language code to add (e.g. "ja", "es")
+     * @return Updated user profile
+     * @throws UserNotFoundException if user not found
+     * @throws ResponseStatusException (404) if language code not recognized
+     */
+    UserResponse addTargetLanguage(String userId, String languageCode);
 
     /**
      * Generate JWT token for a user.

@@ -29,7 +29,7 @@ public class User {
     private String email;
 
     @Column(nullable = false)
-    private String passwordHash; // TODO: Never store plain passwords
+    private String passwordHash;
 
     @Column(nullable = false)
     private String displayName;
