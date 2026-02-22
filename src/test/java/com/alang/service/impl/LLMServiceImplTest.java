@@ -8,12 +8,15 @@ import com.alang.entity.*;
 import com.alang.exception.LLMProviderException;
 import com.alang.exception.RateLimitExceededException;
 import com.alang.exception.UserNotFoundException;
+import com.alang.exception.UnauthorizedException;
+import com.alang.repository.ChatSessionRepository;
 import com.alang.repository.ConversationSummaryRepository;
 import com.alang.repository.LanguageRepository;
 import com.alang.repository.RecentMessageRepository;
 import com.alang.repository.UserRepository;
 import com.alang.service.LLMService;
 import com.alang.service.PromptTemplates;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -21,6 +24,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -38,6 +42,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -65,7 +70,10 @@ class LLMServiceImplTest {
     private ConversationSummaryRepository conversationSummaryRepository;
 
     @Mock
-    private ObjectMapper objectMapper;
+    private ChatSessionRepository chatSessionRepository;
+
+    @Spy
+    private ObjectMapper objectMapper = new ObjectMapper();
 
     @InjectMocks
     private LLMServiceImpl llmService;
@@ -104,6 +112,54 @@ class LLMServiceImplTest {
         limits.setProTierDaily(35000);
         limits.setPerRequestMax(3500);
         return limits;
+    }
+
+    // ---- Shared WebClient mock helpers ----
+
+    @SuppressWarnings("unchecked")
+    private void mockWebClientSuccess(Map<String, Object> apiResponse) {
+        WebClient.RequestBodyUriSpec requestBodyUriSpec = mock(WebClient.RequestBodyUriSpec.class);
+        WebClient.RequestBodySpec requestBodySpec = mock(WebClient.RequestBodySpec.class);
+        WebClient.RequestHeadersSpec requestHeadersSpec = mock(WebClient.RequestHeadersSpec.class);
+        WebClient.ResponseSpec responseSpec = mock(WebClient.ResponseSpec.class);
+        Mono<Map> mono = mock(Mono.class);
+
+        when(llmWebClient.post()).thenReturn(requestBodyUriSpec);
+        when(requestBodyUriSpec.uri(anyString())).thenReturn(requestBodySpec);
+        when(requestBodySpec.bodyValue(any())).thenReturn(requestHeadersSpec);
+        when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.bodyToMono(Map.class)).thenReturn(mono);
+        when(mono.block()).thenReturn(apiResponse);
+    }
+
+    @SuppressWarnings("unchecked")
+    private void mockWebClientThrows(Exception exception) {
+        WebClient.RequestBodyUriSpec requestBodyUriSpec = mock(WebClient.RequestBodyUriSpec.class);
+        WebClient.RequestBodySpec requestBodySpec = mock(WebClient.RequestBodySpec.class);
+        WebClient.RequestHeadersSpec requestHeadersSpec = mock(WebClient.RequestHeadersSpec.class);
+        WebClient.ResponseSpec responseSpec = mock(WebClient.ResponseSpec.class);
+        Mono<Map> mono = mock(Mono.class);
+
+        when(llmWebClient.post()).thenReturn(requestBodyUriSpec);
+        when(requestBodyUriSpec.uri(anyString())).thenReturn(requestBodySpec);
+        when(requestBodySpec.bodyValue(any())).thenReturn(requestHeadersSpec);
+        when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.bodyToMono(Map.class)).thenReturn(mono);
+        when(mono.block()).thenThrow(exception);
+    }
+
+    private Map<String, Object> buildApiResponse(String content, int prompt, int completion, int total) {
+        Map<String, Object> usage = Map.of(
+                "prompt_tokens", prompt,
+                "completion_tokens", completion,
+                "total_tokens", total
+        );
+        Map<String, Object> message = Map.of("content", content);
+        Map<String, Object> choice = Map.of("message", message);
+        HashMap<String, Object> response = new HashMap<>();
+        response.put("choices", List.of(choice));
+        response.put("usage", usage);
+        return response;
     }
 
     // --- countTokens ---
@@ -330,55 +386,18 @@ class LLMServiceImplTest {
             japanese.setNativeName("日本語");
         }
 
-        @SuppressWarnings("unchecked")
-        private void mockWebClientSuccess(Map<String, Object> apiResponse) {
-            WebClient.RequestBodyUriSpec requestBodyUriSpec = mock(WebClient.RequestBodyUriSpec.class);
-            WebClient.RequestBodySpec requestBodySpec = mock(WebClient.RequestBodySpec.class);
-            WebClient.RequestHeadersSpec requestHeadersSpec = mock(WebClient.RequestHeadersSpec.class);
-            WebClient.ResponseSpec responseSpec = mock(WebClient.ResponseSpec.class);
-            Mono<Map> mono = mock(Mono.class);
-
-            when(llmWebClient.post()).thenReturn(requestBodyUriSpec);
-            when(requestBodyUriSpec.uri(anyString())).thenReturn(requestBodySpec);
-            when(requestBodySpec.bodyValue(any())).thenReturn(requestHeadersSpec);
-            when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
-            when(responseSpec.bodyToMono(Map.class)).thenReturn(mono);
-            when(mono.block()).thenReturn(apiResponse);
-        }
-
-        @SuppressWarnings("unchecked")
-        private void mockWebClientThrows(Exception exception) {
-            WebClient.RequestBodyUriSpec requestBodyUriSpec = mock(WebClient.RequestBodyUriSpec.class);
-            WebClient.RequestBodySpec requestBodySpec = mock(WebClient.RequestBodySpec.class);
-            WebClient.RequestHeadersSpec requestHeadersSpec = mock(WebClient.RequestHeadersSpec.class);
-            WebClient.ResponseSpec responseSpec = mock(WebClient.ResponseSpec.class);
-            Mono<Map> mono = mock(Mono.class);
-
-            when(llmWebClient.post()).thenReturn(requestBodyUriSpec);
-            when(requestBodyUriSpec.uri(anyString())).thenReturn(requestBodySpec);
-            when(requestBodySpec.bodyValue(any())).thenReturn(requestHeadersSpec);
-            when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
-            when(responseSpec.bodyToMono(Map.class)).thenReturn(mono);
-            when(mono.block()).thenThrow(exception);
-        }
-
-        private Map<String, Object> buildApiResponse(String content, int prompt, int completion, int total) {
-            Map<String, Object> usage = Map.of(
-                    "prompt_tokens", prompt,
-                    "completion_tokens", completion,
-                    "total_tokens", total
-            );
-            Map<String, Object> message = Map.of("content", content);
-            Map<String, Object> choice = Map.of("message", message);
-            // Use HashMap since Map.of doesn't allow conditional keys easily
-            HashMap<String, Object> response = new HashMap<>();
-            response.put("choices", List.of(choice));
-            response.put("usage", usage);
-            return response;
+        private ChatSession createTestSession(User user) {
+            ChatSession session = new ChatSession();
+            session.setId("session-1");
+            session.setUser(user);
+            session.setLearningLanguage(japanese);
+            session.setTeachingLanguage(english);
+            return session;
         }
 
         private ChatMessageRequest buildRequest(String msg) {
             ChatMessageRequest request = new ChatMessageRequest();
+            request.setSessionId("session-1");
             request.setMessage(msg);
             request.setIncludeContext(false);
             return request;
@@ -389,8 +408,9 @@ class LLMServiceImplTest {
             LLMProperties.TokenLimits limits = createTokenLimits();
 
             when(userRepository.findById("free-user")).thenReturn(Optional.of(freeUser));
+            when(chatSessionRepository.findByIdAndUser(eq("session-1"), eq(freeUser)))
+                    .thenReturn(Optional.of(createTestSession(freeUser)));
             when(languageRepository.findById("en")).thenReturn(Optional.of(english));
-            when(languageRepository.findById("ja")).thenReturn(Optional.of(japanese));
             when(promptTemplates.buildChatSystemPrompt("English", "Japanese")).thenReturn("System prompt");
             when(llmProperties.getModels()).thenReturn(models);
             when(llmProperties.getTokenLimits()).thenReturn(limits);
@@ -428,6 +448,8 @@ class LLMServiceImplTest {
         @Test
         void generateReply_throwsWhenAppLanguageNotFound() {
             when(userRepository.findById("free-user")).thenReturn(Optional.of(freeUser));
+            when(chatSessionRepository.findByIdAndUser(eq("session-1"), eq(freeUser)))
+                    .thenReturn(Optional.of(createTestSession(freeUser)));
             when(llmProperties.getModels()).thenReturn(createModels());
             when(languageRepository.findById("en")).thenReturn(Optional.empty());
 
@@ -439,17 +461,16 @@ class LLMServiceImplTest {
         }
 
         @Test
-        void generateReply_throwsWhenTargetLanguageNotSupported() {
+        void generateReply_throwsWhenSessionNotFound() {
             when(userRepository.findById("free-user")).thenReturn(Optional.of(freeUser));
-            when(llmProperties.getModels()).thenReturn(createModels());
-            when(languageRepository.findById("en")).thenReturn(Optional.of(english));
-            when(languageRepository.findById("xx")).thenReturn(Optional.empty());
+            when(chatSessionRepository.findByIdAndUser(anyString(), eq(freeUser)))
+                    .thenReturn(Optional.empty());
 
             ChatMessageRequest request = buildRequest("Hi");
 
             assertThatThrownBy(() -> llmService.generateReply(request, "free-user"))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("Language not supported");
+                    .isInstanceOf(UnauthorizedException.class)
+                    .hasMessageContaining("Session not found");
         }
 
         @Test
@@ -457,8 +478,9 @@ class LLMServiceImplTest {
             freeUser.setTotalDailyTokensUsed(3500L); // already at limit
 
             when(userRepository.findById("free-user")).thenReturn(Optional.of(freeUser));
+            when(chatSessionRepository.findByIdAndUser(eq("session-1"), eq(freeUser)))
+                    .thenReturn(Optional.of(createTestSession(freeUser)));
             when(languageRepository.findById("en")).thenReturn(Optional.of(english));
-            when(languageRepository.findById("ja")).thenReturn(Optional.of(japanese));
             when(promptTemplates.buildChatSystemPrompt("English", "Japanese")).thenReturn("System prompt");
             when(llmProperties.getModels()).thenReturn(createModels());
             when(llmProperties.getTokenLimits()).thenReturn(createTokenLimits());
@@ -613,21 +635,21 @@ class LLMServiceImplTest {
             mockCommonDependencies();
             mockWebClientSuccess(buildApiResponse("Reply with context", 80, 120, 200));
 
-            // Set up summaries
+            // Set up summaries (still user+language scoped)
             ConversationSummary summary = new ConversationSummary();
             summary.setSummaryText("User learned about particles.");
             when(conversationSummaryRepository.findByUserAndLearningLanguageOrderByCreatedAtDesc(
-                    eq(freeUser), eq(japanese), any())).thenReturn(List.of(summary));
+                    any(User.class), any(Language.class), any())).thenReturn(List.of(summary));
 
-            // Set up recent messages
+            // Set up recent messages (now session-scoped)
             RecentMessage msg1 = new RecentMessage();
             msg1.setRole(RoleType.user);
             msg1.setContent("What is は?");
             RecentMessage msg2 = new RecentMessage();
             msg2.setRole(RoleType.assistant);
             msg2.setContent("は is a topic marker.");
-            when(recentMessageRepository.findByUserAndLearningLanguageOrderByCreatedAtAsc(
-                    eq(freeUser), eq(japanese), any())).thenReturn(List.of(msg1, msg2));
+            when(recentMessageRepository.findBySessionOrderByCreatedAtAsc(
+                    any(ChatSession.class), any())).thenReturn(List.of(msg1, msg2));
 
             ChatMessageRequest request = buildRequest("Tell me more");
             request.setIncludeContext(true);
@@ -637,9 +659,9 @@ class LLMServiceImplTest {
             assertThat(response.getReply()).isEqualTo("Reply with context");
             // Verify context repos were queried
             verify(conversationSummaryRepository).findByUserAndLearningLanguageOrderByCreatedAtDesc(
-                    eq(freeUser), eq(japanese), any());
-            verify(recentMessageRepository).findByUserAndLearningLanguageOrderByCreatedAtAsc(
-                    eq(freeUser), eq(japanese), any());
+                    any(User.class), any(Language.class), any());
+            verify(recentMessageRepository).findBySessionOrderByCreatedAtAsc(
+                    any(ChatSession.class), any());
         }
 
         @Test
@@ -653,9 +675,8 @@ class LLMServiceImplTest {
             llmService.generateReply(request, "free-user");
 
             verifyNoInteractions(conversationSummaryRepository);
-            // recentMessageRepository is not called for context (only called if includeContext=true)
-            verify(recentMessageRepository, never()).findByUserAndLearningLanguageOrderByCreatedAtAsc(
-                    any(), any(), any());
+            verify(recentMessageRepository, never()).findBySessionOrderByCreatedAtAsc(
+                    any(ChatSession.class), any());
         }
 
         @Test
@@ -664,9 +685,9 @@ class LLMServiceImplTest {
             mockWebClientSuccess(buildApiResponse("Reply", 50, 100, 150));
 
             when(conversationSummaryRepository.findByUserAndLearningLanguageOrderByCreatedAtDesc(
-                    eq(freeUser), eq(japanese), any())).thenReturn(List.of());
-            when(recentMessageRepository.findByUserAndLearningLanguageOrderByCreatedAtAsc(
-                    eq(freeUser), eq(japanese), any())).thenReturn(List.of());
+                    any(User.class), any(Language.class), any())).thenReturn(List.of());
+            when(recentMessageRepository.findBySessionOrderByCreatedAtAsc(
+                    any(ChatSession.class), any())).thenReturn(List.of());
 
             ChatMessageRequest request = buildRequest("Hi");
             request.setIncludeContext(true);
@@ -677,29 +698,25 @@ class LLMServiceImplTest {
         }
 
         @Test
-        void generateReply_handlesUnknownContextLanguageGracefully() {
-            // When includeContext=true but language lookup for context returns null
-            freeUser.setTotalDailyTokensUsed(0L);
-
-            when(userRepository.findById("free-user")).thenReturn(Optional.of(freeUser));
-            when(languageRepository.findById("en")).thenReturn(Optional.of(english));
-            // First call for target language (in generateReply) returns japanese
-            // Second call for context building also needs "ja" but we need it to work for the main flow
-            when(languageRepository.findById("ja")).thenReturn(Optional.of(japanese))
-                    .thenReturn(Optional.empty()); // context building returns null
-            when(promptTemplates.buildChatSystemPrompt("English", "Japanese")).thenReturn("System prompt");
-            when(llmProperties.getModels()).thenReturn(createModels());
-            when(llmProperties.getTokenLimits()).thenReturn(createTokenLimits());
-            lenient().when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
-
+        void generateReply_includesOnlySummaryContextWhenNoRecentMessages() {
+            // When includeContext=true and summaries exist but no recent messages
+            mockCommonDependencies();
             mockWebClientSuccess(buildApiResponse("Reply", 50, 100, 150));
+
+            ConversationSummary summary = new ConversationSummary();
+            summary.setSummaryText("User asked about て-form.");
+            when(conversationSummaryRepository.findByUserAndLearningLanguageOrderByCreatedAtDesc(
+                    any(User.class), any(Language.class), any())).thenReturn(List.of(summary));
+            when(recentMessageRepository.findBySessionOrderByCreatedAtAsc(
+                    any(ChatSession.class), any())).thenReturn(List.of());
 
             ChatMessageRequest request = buildRequest("Hi");
             request.setIncludeContext(true);
 
-            // Should not throw - just skips context
             LLMService.LLMResponse response = llmService.generateReply(request, "free-user");
             assertThat(response.getReply()).isEqualTo("Reply");
+            verify(conversationSummaryRepository).findByUserAndLearningLanguageOrderByCreatedAtDesc(
+                    any(User.class), any(Language.class), any());
         }
 
         @Test
@@ -710,8 +727,9 @@ class LLMServiceImplTest {
             proUser.setAppLanguageCode("en");
 
             when(userRepository.findById("pro-user")).thenReturn(Optional.of(proUser));
+            when(chatSessionRepository.findByIdAndUser(eq("session-1"), eq(proUser)))
+                    .thenReturn(Optional.of(createTestSession(proUser)));
             when(languageRepository.findById("en")).thenReturn(Optional.of(english));
-            when(languageRepository.findById("ja")).thenReturn(Optional.of(japanese));
             when(promptTemplates.buildChatSystemPrompt("English", "Japanese")).thenReturn("System prompt");
             when(llmProperties.getModels()).thenReturn(createModels());
             when(llmProperties.getTokenLimits()).thenReturn(createTokenLimits());
@@ -724,6 +742,245 @@ class LLMServiceImplTest {
             LLMService.LLMResponse response = llmService.generateReply(request, "pro-user");
 
             assertThat(response.getModelUsed()).isEqualTo("gpt-4-turbo");
+        }
+    }
+
+    // --- generateNoteFromConversation ---
+
+    @Nested
+    class GenerateNoteFromConversation {
+
+        private Language english;
+        private Language japanese;
+        private List<Map<String, String>> sessionMessages;
+
+        @BeforeEach
+        void setUpLanguages() {
+            english = new Language();
+            english.setCode("en");
+            english.setName("English");
+            english.setNativeName("English");
+
+            japanese = new Language();
+            japanese.setCode("ja");
+            japanese.setName("Japanese");
+            japanese.setNativeName("日本語");
+
+            sessionMessages = List.of(
+                    Map.of("role", "user", "content", "What is は?"),
+                    Map.of("role", "assistant", "content", "は is the topic marker particle.")
+            );
+        }
+
+        private void mockCommonDependencies() {
+            when(userRepository.findById("free-user")).thenReturn(Optional.of(freeUser));
+            when(llmProperties.getModels()).thenReturn(createModels());
+            when(llmProperties.getTokenLimits()).thenReturn(createTokenLimits());
+            when(promptTemplates.buildNoteCreationSystemPrompt(anyString(), anyString()))
+                    .thenReturn("Note system prompt");
+            lenient().when(promptTemplates.buildNoteCreationUserPrompt(any(), any()))
+                    .thenReturn("Note user prompt");
+            lenient().when(promptTemplates.buildNoteUpdateUserPrompt(any(), anyString(), any()))
+                    .thenReturn("Note update prompt");
+            lenient().when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+        }
+
+        private String validNoteJson() {
+            return """
+                    {
+                      "type": "vocab",
+                      "title": "は",
+                      "summary": "Topic marker particle",
+                      "content": "Used to mark the topic of a sentence.",
+                      "structured": {"word": "は", "reading": "wa", "meaning": "topic marker"},
+                      "tags": [
+                        {"category": "topic", "value": "grammar"},
+                        {"category": "difficulty", "value": "beginner"}
+                      ]
+                    }
+                    """;
+        }
+
+        @Test
+        void generateNote_successCreatesNewNote() {
+            mockCommonDependencies();
+            mockWebClientSuccess(buildApiResponse(validNoteJson(), 50, 100, 150));
+
+            NoteDto result = llmService.generateNoteFromConversation(
+                    sessionMessages, null, null, japanese, english, "free-user");
+
+            assertThat(result.getType()).isEqualTo(NoteType.vocab);
+            assertThat(result.getTitle()).isEqualTo("は");
+            assertThat(result.getSummary()).isEqualTo("Topic marker particle");
+            assertThat(result.getLearningLanguage()).isEqualTo("ja");
+            assertThat(result.getTeachingLanguage()).isEqualTo("en");
+            assertThat(result.getTags()).hasSize(2);
+            verify(promptTemplates).buildNoteCreationUserPrompt(sessionMessages, null);
+        }
+
+        @Test
+        void generateNote_successUpdatesExistingNote() {
+            mockCommonDependencies();
+            NoteDto existingNote = new NoteDto();
+            existingNote.setId("note-1");
+            existingNote.setTitle("Old title");
+
+            String updatedJson = """
+                    {
+                      "type": "grammar",
+                      "title": "は vs が",
+                      "summary": "Contrast between topic and subject markers.",
+                      "content": "は marks the topic; が marks the grammatical subject.",
+                      "structured": {},
+                      "tags": [{"category": "function", "value": "contrast"}]
+                    }
+                    """;
+            mockWebClientSuccess(buildApiResponse(updatedJson, 60, 120, 180));
+
+            NoteDto result = llmService.generateNoteFromConversation(
+                    sessionMessages, "particles", existingNote, japanese, english, "free-user");
+
+            assertThat(result.getTitle()).isEqualTo("は vs が");
+            assertThat(result.getType()).isEqualTo(NoteType.grammar);
+            verify(promptTemplates).buildNoteUpdateUserPrompt(eq(sessionMessages), anyString(), eq("particles"));
+        }
+
+        @Test
+        void generateNote_fallsBackToEmptyJsonWhenSerializationFails() throws Exception {
+            mockCommonDependencies();
+            NoteDto existingNote = new NoteDto();
+            existingNote.setTitle("Old title");
+
+            doThrow(new JsonProcessingException("simulated") {}).when(objectMapper).writeValueAsString(any());
+
+            mockWebClientSuccess(buildApiResponse(validNoteJson(), 50, 100, 150));
+
+            // Should succeed and use "{}" as the fallback serialized note
+            NoteDto result = llmService.generateNoteFromConversation(
+                    sessionMessages, null, existingNote, japanese, english, "free-user");
+
+            assertThat(result).isNotNull();
+            verify(promptTemplates).buildNoteUpdateUserPrompt(any(), eq("{}"), any());
+        }
+
+        @Test
+        void generateNote_throwsWhenUserNotFound() {
+            when(userRepository.findById("missing")).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> llmService.generateNoteFromConversation(
+                    sessionMessages, null, null, japanese, english, "missing"))
+                    .isInstanceOf(UserNotFoundException.class);
+        }
+
+        @Test
+        void generateNote_throwsWhenBudgetExceeded() {
+            freeUser.setTotalDailyTokensUsed(3500L);
+            when(userRepository.findById("free-user")).thenReturn(Optional.of(freeUser));
+            when(llmProperties.getModels()).thenReturn(createModels());
+            when(llmProperties.getTokenLimits()).thenReturn(createTokenLimits());
+            when(promptTemplates.buildNoteCreationSystemPrompt(anyString(), anyString()))
+                    .thenReturn("Note system prompt");
+            when(promptTemplates.buildNoteCreationUserPrompt(any(), any()))
+                    .thenReturn("Note user prompt");
+
+            assertThatThrownBy(() -> llmService.generateNoteFromConversation(
+                    sessionMessages, null, null, japanese, english, "free-user"))
+                    .isInstanceOf(RateLimitExceededException.class);
+        }
+
+        @Test
+        void generateNote_throwsOnUnparseableJson() {
+            mockCommonDependencies();
+            mockWebClientSuccess(buildApiResponse("this is not json at all", 50, 100, 150));
+
+            assertThatThrownBy(() -> llmService.generateNoteFromConversation(
+                    sessionMessages, null, null, japanese, english, "free-user"))
+                    .isInstanceOf(LLMProviderException.class)
+                    .hasMessageContaining("unparseable JSON");
+        }
+
+        @Test
+        void generateNote_throwsOnInvalidNoteType() {
+            mockCommonDependencies();
+            String json = """
+                    {"type": "invalid_type", "title": "は", "summary": "x",
+                     "content": "y", "structured": {}, "tags": []}
+                    """;
+            mockWebClientSuccess(buildApiResponse(json, 50, 100, 150));
+
+            assertThatThrownBy(() -> llmService.generateNoteFromConversation(
+                    sessionMessages, null, null, japanese, english, "free-user"))
+                    .isInstanceOf(LLMProviderException.class)
+                    .hasMessageContaining("invalid note structure");
+        }
+
+        @Test
+        void generateNote_throwsOnMissingTitle() {
+            mockCommonDependencies();
+            String json = """
+                    {"type": "vocab", "title": "", "summary": "x",
+                     "content": "y", "structured": {}, "tags": []}
+                    """;
+            mockWebClientSuccess(buildApiResponse(json, 50, 100, 150));
+
+            assertThatThrownBy(() -> llmService.generateNoteFromConversation(
+                    sessionMessages, null, null, japanese, english, "free-user"))
+                    .isInstanceOf(LLMProviderException.class)
+                    .hasMessageContaining("invalid note structure");
+        }
+
+        @Test
+        void generateNote_truncatesTitleOver60Chars() {
+            mockCommonDependencies();
+            String longTitle = "A".repeat(80);
+            String json = String.format(
+                    "{\"type\": \"grammar\", \"title\": \"%s\", \"summary\": \"x\"," +
+                    " \"content\": \"y\", \"structured\": {}, \"tags\": []}", longTitle);
+            mockWebClientSuccess(buildApiResponse(json, 50, 100, 150));
+
+            NoteDto result = llmService.generateNoteFromConversation(
+                    sessionMessages, null, null, japanese, english, "free-user");
+
+            assertThat(result.getTitle()).hasSize(60);
+        }
+
+        @Test
+        void generateNote_parsesStructuredContent() {
+            mockCommonDependencies();
+            mockWebClientSuccess(buildApiResponse(validNoteJson(), 50, 100, 150));
+
+            NoteDto result = llmService.generateNoteFromConversation(
+                    sessionMessages, null, null, japanese, english, "free-user");
+
+            assertThat(result.getStructuredContent()).isNotNull();
+            assertThat(result.getStructuredContent()).containsKey("word");
+            assertThat(result.getStructuredContent().get("word")).isEqualTo("は");
+        }
+
+        @Test
+        void generateNote_filtersOutInvalidTagCategories() {
+            mockCommonDependencies();
+            String json = """
+                    {
+                      "type": "vocab",
+                      "title": "は",
+                      "summary": "x",
+                      "content": "y",
+                      "structured": {},
+                      "tags": [
+                        {"category": "topic", "value": "grammar"},
+                        {"category": "invalid_category", "value": "some_value"},
+                        {"category": "difficulty", "value": "beginner"}
+                      ]
+                    }
+                    """;
+            mockWebClientSuccess(buildApiResponse(json, 50, 100, 150));
+
+            NoteDto result = llmService.generateNoteFromConversation(
+                    sessionMessages, null, null, japanese, english, "free-user");
+
+            assertThat(result.getTags()).hasSize(2);
+            assertThat(result.getTags()).extracting("category").containsOnly("topic", "difficulty");
         }
     }
 

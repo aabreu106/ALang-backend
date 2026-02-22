@@ -152,7 +152,7 @@ class NoteControllerTest {
         updated.setId("note-1");
         updated.setTitle("Updated Title");
 
-        when(noteService.updateNote("note-1", request, "user-1")).thenReturn(updated);
+        when(noteService.updateNote("note-1", request, "user-1", true)).thenReturn(updated);
 
         var response = noteController.updateNote("note-1", request, "user-1");
 
