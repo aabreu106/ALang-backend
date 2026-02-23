@@ -93,6 +93,19 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Handle invalid operation errors (e.g. creating a note from an empty session).
+     */
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalState(IllegalStateException ex) {
+        ErrorResponse response = new ErrorResponse(
+            ex.getMessage(),
+            null,
+            LocalDateTime.now()
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    /**
      * Handle rate limit errors.
      */
     @ExceptionHandler(RateLimitExceededException.class)

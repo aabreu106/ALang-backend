@@ -34,6 +34,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public AuthResponse signup(SignupRequest request) {
+        request.setEmail(request.getEmail().toLowerCase());
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new EmailAlreadyExistsException(request.getEmail());
         }
@@ -56,6 +57,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public AuthResponse login(LoginRequest request) {
+        request.setEmail(request.getEmail().toLowerCase());
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new InvalidCredentialsException("Invalid email or password"));
 
