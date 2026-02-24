@@ -2,6 +2,7 @@ package com.alang.service.impl;
 
 import com.alang.dto.chat.ChatMessageRequest;
 import com.alang.dto.chat.ChatMessageResponse;
+import com.alang.dto.chat.CloseSessionRequest;
 import com.alang.dto.chat.CreateSessionRequest;
 import com.alang.dto.chat.NoteFromSessionRequest;
 import com.alang.dto.chat.SessionResponse;
@@ -415,6 +416,9 @@ class ChatServiceImplTest {
             assertThat(result.getId()).isEqualTo("note-1");
             assertThat(result.getTitle()).isEqualTo("は");
             verify(noteService).createNote(generatedNote, "user-1");
+            // Session should be marked as having a note created
+            assertThat(activeSession.getNoteCreated()).isTrue();
+            verify(chatSessionRepository).save(activeSession);
         }
     }
 
@@ -503,24 +507,51 @@ class ChatServiceImplTest {
 
         @Test
         void closeSession_throwsWhenUserNotFound() {
+            CloseSessionRequest request = new CloseSessionRequest();
             when(userRepository.findById("missing")).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> chatService.closeSession("session-1", "missing"))
+            assertThatThrownBy(() -> chatService.closeSession("session-1", request, "missing"))
                     .isInstanceOf(UserNotFoundException.class);
         }
 
         @Test
         void closeSession_throwsWhenSessionNotFound() {
+            // force=false → enters early-return branch → findByIdAndUser → empty → throws
+            CloseSessionRequest request = new CloseSessionRequest();
             when(userRepository.findById("user-1")).thenReturn(Optional.of(testUser));
+            when(chatSessionRepository.existsByIdAndUserAndNoteCreatedTrue("session-1", testUser))
+                    .thenReturn(false);
             when(chatSessionRepository.findByIdAndUser("session-1", testUser))
                     .thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> chatService.closeSession("session-1", "user-1"))
+            assertThatThrownBy(() -> chatService.closeSession("session-1", request, "user-1"))
                     .isInstanceOf(UnauthorizedException.class);
         }
 
         @Test
+        void closeSession_returnsEarlyWithNoteCreatedFalse_whenNoteNotCreatedAndNotForce() {
+            CloseSessionRequest request = new CloseSessionRequest(); // force=false
+            when(userRepository.findById("user-1")).thenReturn(Optional.of(testUser));
+            when(chatSessionRepository.existsByIdAndUserAndNoteCreatedTrue("session-1", testUser))
+                    .thenReturn(false);
+            when(chatSessionRepository.findByIdAndUser("session-1", testUser))
+                    .thenReturn(Optional.of(activeSession));
+            when(recentMessageRepository.countBySession(activeSession)).thenReturn(3L);
+
+            SessionResponse response = chatService.closeSession("session-1", request, "user-1");
+
+            // Session should NOT be closed
+            assertThat(response.isNoteCreated()).isFalse();
+            assertThat(response.getStatus()).isEqualTo("active");
+            verify(chatSessionRepository, never()).save(any());
+        }
+
+        @Test
         void closeSession_throwsWhenAlreadyClosed() {
+            // Use force=true to bypass the note check and reach the "already closed" guard
+            CloseSessionRequest request = new CloseSessionRequest();
+            request.setForce(true);
+
             ChatSession closedSession = new ChatSession();
             closedSession.setId("session-1");
             closedSession.setStatus(SessionStatus.closed);
@@ -531,25 +562,48 @@ class ChatServiceImplTest {
             when(chatSessionRepository.findByIdAndUser("session-1", testUser))
                     .thenReturn(Optional.of(closedSession));
 
-            assertThatThrownBy(() -> chatService.closeSession("session-1", "user-1"))
+            assertThatThrownBy(() -> chatService.closeSession("session-1", request, "user-1"))
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining("already closed");
         }
 
         @Test
-        void closeSession_successUpdatesStatusAndReturnsResponse() {
+        void closeSession_closesSessionWhenNoteAlreadyCreated() {
+            CloseSessionRequest request = new CloseSessionRequest(); // force=false
+            activeSession.setNoteCreated(true);
+
+            when(userRepository.findById("user-1")).thenReturn(Optional.of(testUser));
+            when(chatSessionRepository.existsByIdAndUserAndNoteCreatedTrue("session-1", testUser))
+                    .thenReturn(true);
+            when(chatSessionRepository.findByIdAndUser("session-1", testUser))
+                    .thenReturn(Optional.of(activeSession));
+            when(chatSessionRepository.save(activeSession)).thenReturn(activeSession);
+            when(recentMessageRepository.countBySession(activeSession)).thenReturn(7L);
+
+            SessionResponse response = chatService.closeSession("session-1", request, "user-1");
+
+            assertThat(response.getStatus()).isEqualTo("closed");
+            assertThat(response.getMessageCount()).isEqualTo(7);
+            assertThat(response.isNoteCreated()).isTrue();
+            assertThat(activeSession.getClosedAt()).isNotNull();
+        }
+
+        @Test
+        void closeSession_closesSessionWhenForceTrueRegardlessOfNote() {
+            CloseSessionRequest request = new CloseSessionRequest();
+            request.setForce(true);
+
             when(userRepository.findById("user-1")).thenReturn(Optional.of(testUser));
             when(chatSessionRepository.findByIdAndUser("session-1", testUser))
                     .thenReturn(Optional.of(activeSession));
             when(chatSessionRepository.save(activeSession)).thenReturn(activeSession);
             when(recentMessageRepository.countBySession(activeSession)).thenReturn(7L);
 
-            SessionResponse response = chatService.closeSession("session-1", "user-1");
+            SessionResponse response = chatService.closeSession("session-1", request, "user-1");
 
             assertThat(response.getStatus()).isEqualTo("closed");
-            assertThat(response.getMessageCount()).isEqualTo(7);
-            assertThat(activeSession.getStatus()).isEqualTo(SessionStatus.closed);
-            assertThat(activeSession.getClosedAt()).isNotNull();
+            // note-created check must be skipped entirely when force=true
+            verify(chatSessionRepository, never()).existsByIdAndUserAndNoteCreatedTrue(any(), any());
         }
     }
 

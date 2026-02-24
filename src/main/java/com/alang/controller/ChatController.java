@@ -3,6 +3,7 @@ package com.alang.controller;
 import com.alang.dto.chat.ChatHistoryDto;
 import com.alang.dto.chat.ChatMessageRequest;
 import com.alang.dto.chat.ChatMessageResponse;
+import com.alang.dto.chat.CloseSessionRequest;
 import com.alang.dto.chat.CreateSessionRequest;
 import com.alang.dto.chat.NoteFromSessionRequest;
 import com.alang.dto.chat.SessionResponse;
@@ -78,13 +79,21 @@ public class ChatController {
     /**
      * POST /chat/sessions/{sessionId}/close
      * Close a session, preventing further messages from being sent.
+     *
+     * If force=false (default), the backend checks whether a note has been created.
+     * If not, it returns the session with noteCreated=false without closing — the frontend
+     * should prompt the user to confirm, then re-call with force=true.
      */
     @PostMapping("/sessions/{sessionId}/close")
     public ResponseEntity<SessionResponse> closeSession(
             @PathVariable String sessionId,
+            @RequestBody(required = false) CloseSessionRequest request,
             @AuthenticationPrincipal String userId
     ) {
-        return ResponseEntity.ok(chatService.closeSession(sessionId, userId));
+        if (request == null) {
+            request = new CloseSessionRequest();
+        }
+        return ResponseEntity.ok(chatService.closeSession(sessionId, request, userId));
     }
 
     /**

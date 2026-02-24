@@ -19,4 +19,5 @@ public class SessionResponse {
     private LocalDateTime updatedAt;
     private LocalDateTime closedAt;  // null if session is still active
     private int messageCount;        // number of RecentMessages in this session
+    private boolean noteCreated;     // false if no note has been created yet from this session
 }
