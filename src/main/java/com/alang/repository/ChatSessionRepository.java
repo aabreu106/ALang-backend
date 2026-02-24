@@ -30,4 +30,10 @@ public interface ChatSessionRepository extends JpaRepository<ChatSession, String
      * Used as an authorization check before any session operation.
      */
     Optional<ChatSession> findByIdAndUser(String id, User user);
+
+    /**
+     * Check whether a note has been created from the given session (for this user).
+     * Called at the beginning of closeSession() to guard against closing without saving a note.
+     */
+    boolean existsByIdAndUserAndNoteCreatedTrue(String id, User user);
 }

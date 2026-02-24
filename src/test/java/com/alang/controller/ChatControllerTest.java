@@ -3,6 +3,8 @@ package com.alang.controller;
 import com.alang.dto.chat.ChatHistoryDto;
 import com.alang.dto.chat.ChatMessageRequest;
 import com.alang.dto.chat.ChatMessageResponse;
+import com.alang.dto.chat.CloseSessionRequest;
+import com.alang.dto.chat.SessionResponse;
 import com.alang.service.ChatService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -57,6 +59,71 @@ class ChatControllerTest {
         chatController.sendMessage("session-42", request, "user-42");
 
         verify(chatService).sendMessage(request, "user-42");
+    }
+
+    // ---- closeSession ----
+
+    @Test
+    void closeSession_returnsOkWithClosedSession() {
+        SessionResponse sessionResponse = new SessionResponse();
+        sessionResponse.setId("session-1");
+        sessionResponse.setStatus("closed");
+        sessionResponse.setNoteCreated(true);
+
+        CloseSessionRequest request = new CloseSessionRequest();
+        when(chatService.closeSession("session-1", request, "user-1")).thenReturn(sessionResponse);
+
+        var response = chatController.closeSession("session-1", request, "user-1");
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody().getStatus()).isEqualTo("closed");
+        assertThat(response.getBody().isNoteCreated()).isTrue();
+        verify(chatService).closeSession("session-1", request, "user-1");
+    }
+
+    @Test
+    void closeSession_returnsSessionWithNoteCreatedFalse_whenNoteNotYetCreated() {
+        SessionResponse sessionResponse = new SessionResponse();
+        sessionResponse.setId("session-1");
+        sessionResponse.setStatus("active");
+        sessionResponse.setNoteCreated(false);
+
+        CloseSessionRequest request = new CloseSessionRequest(); // force=false
+        when(chatService.closeSession("session-1", request, "user-1")).thenReturn(sessionResponse);
+
+        var response = chatController.closeSession("session-1", request, "user-1");
+
+        assertThat(response.getBody().isNoteCreated()).isFalse();
+        assertThat(response.getBody().getStatus()).isEqualTo("active");
+    }
+
+    @Test
+    void closeSession_usesDefaultRequestWhenBodyIsNull() {
+        SessionResponse sessionResponse = new SessionResponse();
+        sessionResponse.setStatus("closed");
+
+        // null body → controller creates a default CloseSessionRequest (force=false)
+        when(chatService.closeSession(eq("session-1"), any(CloseSessionRequest.class), eq("user-1")))
+                .thenReturn(sessionResponse);
+
+        var response = chatController.closeSession("session-1", null, "user-1");
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(chatService).closeSession(eq("session-1"), any(CloseSessionRequest.class), eq("user-1"));
+    }
+
+    @Test
+    void closeSession_passesForceTrueToService() {
+        CloseSessionRequest request = new CloseSessionRequest();
+        request.setForce(true);
+
+        SessionResponse sessionResponse = new SessionResponse();
+        sessionResponse.setStatus("closed");
+        when(chatService.closeSession("session-1", request, "user-1")).thenReturn(sessionResponse);
+
+        chatController.closeSession("session-1", request, "user-1");
+
+        verify(chatService).closeSession("session-1", request, "user-1");
     }
 
     @Test

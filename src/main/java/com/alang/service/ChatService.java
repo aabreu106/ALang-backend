@@ -3,6 +3,7 @@ package com.alang.service;
 import com.alang.dto.chat.ChatHistoryDto;
 import com.alang.dto.chat.ChatMessageRequest;
 import com.alang.dto.chat.ChatMessageResponse;
+import com.alang.dto.chat.CloseSessionRequest;
 import com.alang.dto.chat.CreateSessionRequest;
 import com.alang.dto.chat.NoteFromSessionRequest;
 import com.alang.dto.chat.SessionResponse;
@@ -91,13 +92,19 @@ public interface ChatService {
 
     /**
      * Close a session, preventing further messages from being sent.
-     * Sets status to 'closed' and records closedAt timestamp.
+     *
+     * If request.force is false (default), checks whether a note has been created from the session.
+     * If no note exists, returns early with noteCreated=false without closing — the frontend should
+     * then prompt the user for confirmation and re-call with force=true.
+     *
+     * If request.force is true, skips the check and closes immediately.
      *
      * @param sessionId Session to close
+     * @param request   Close options (force flag)
      * @param userId    Authenticated user ID
-     * @return Updated session details
+     * @return Updated session details (check noteCreated field when not force)
      */
-    SessionResponse closeSession(String sessionId, String userId);
+    SessionResponse closeSession(String sessionId, CloseSessionRequest request, String userId);
 
     /**
      * Get conversation history for a user in a specific language.

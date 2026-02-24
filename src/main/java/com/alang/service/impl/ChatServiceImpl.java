@@ -3,6 +3,7 @@ package com.alang.service.impl;
 import com.alang.dto.chat.ChatHistoryDto;
 import com.alang.dto.chat.ChatMessageRequest;
 import com.alang.dto.chat.ChatMessageResponse;
+import com.alang.dto.chat.CloseSessionRequest;
 import com.alang.dto.chat.CreateSessionRequest;
 import com.alang.dto.chat.NoteFromSessionRequest;
 import com.alang.dto.chat.SessionResponse;
@@ -183,6 +184,9 @@ public class ChatServiceImpl implements ChatService {
 
         NoteDto savedNote = noteService.createNote(generatedNote, userId);
 
+        session.setNoteCreated(true);
+        chatSessionRepository.save(session);
+
         log.info("Note created from session: sessionId={}, noteId={}, userId={}, topic={}",
                 sessionId, savedNote.getId(), userId, request.getTopicFocus());
 
@@ -233,9 +237,18 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     @Transactional
-    public SessionResponse closeSession(String sessionId, String userId) {
+    public SessionResponse closeSession(String sessionId, CloseSessionRequest request, String userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));
+
+        // Check whether a note has been created for this session before proceeding.
+        // If force=false and no note exists, return early so the frontend can prompt the user.
+        if (!request.isForce() && !chatSessionRepository.existsByIdAndUserAndNoteCreatedTrue(sessionId, user)) {
+            ChatSession session = chatSessionRepository.findByIdAndUser(sessionId, user)
+                    .orElseThrow(() -> new UnauthorizedException("Session not found or access denied"));
+            log.info("Session close blocked: note not yet created, force=false. sessionId={}, userId={}", sessionId, userId);
+            return toSessionResponse(session, (int) recentMessageRepository.countBySession(session));
+        }
 
         ChatSession session = chatSessionRepository.findByIdAndUser(sessionId, user)
                 .orElseThrow(() -> new UnauthorizedException("Session not found or access denied"));
@@ -291,6 +304,7 @@ public class ChatServiceImpl implements ChatService {
         dto.setUpdatedAt(session.getUpdatedAt());
         dto.setClosedAt(session.getClosedAt());
         dto.setMessageCount(messageCount);
+        dto.setNoteCreated(Boolean.TRUE.equals(session.getNoteCreated()));
         return dto;
     }
 }

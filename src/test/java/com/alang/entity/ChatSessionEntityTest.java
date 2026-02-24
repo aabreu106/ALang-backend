@@ -50,4 +50,10 @@ class ChatSessionEntityTest {
         ChatSession session = new ChatSession();
         assertThat(session.getClosedAt()).isNull();
     }
+
+    @Test
+    void noteCreated_isFalseByDefault() {
+        ChatSession session = new ChatSession();
+        assertThat(session.getNoteCreated()).isFalse();
+    }
 }

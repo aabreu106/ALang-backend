@@ -61,6 +61,13 @@ public class ChatSession {
      */
     private LocalDateTime closedAt;
 
+    /**
+     * True once a note has been created from this session via createNoteFromSession().
+     * Used to warn the user before closing a session without saving a note.
+     */
+    @Column(nullable = false)
+    private Boolean noteCreated = false;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

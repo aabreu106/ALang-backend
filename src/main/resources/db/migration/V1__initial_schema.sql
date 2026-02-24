@@ -120,6 +120,7 @@ CREATE TABLE chat_sessions (
     created_at             TIMESTAMP      NOT NULL,
     updated_at             TIMESTAMP      NOT NULL,
     closed_at              TIMESTAMP              -- set when status transitions to 'closed'
+    note_created           BOOLEAN        NOT NULL DEFAULT FALSE
 );
 
 -- ===========================
