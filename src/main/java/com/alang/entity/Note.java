@@ -91,14 +91,13 @@ public class Note {
 
     /**
      * Ease factor for spaced repetition (SM-2 algorithm)
-     * TODO: Implement in ReviewService
      */
-    private Double easeFactor = 2.5;
+    private Double easeFactor = 1.5;
 
     /**
      * Current interval in days
      */
-    private Integer intervalDays = 1;
+    private Integer intervalDays = 0;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -111,8 +110,8 @@ public class Note {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
         if (nextReviewAt == null) {
-            // First review in 1 day
-            nextReviewAt = LocalDateTime.now().plusDays(1);
+            // First review today
+            nextReviewAt = LocalDateTime.now();
         }
     }
 

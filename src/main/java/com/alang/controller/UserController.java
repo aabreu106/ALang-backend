@@ -7,7 +7,6 @@ import com.alang.dto.auth.SignupRequest;
 import com.alang.dto.auth.UserResponse;
 import com.alang.service.UserService;
 import jakarta.validation.Valid;
-import java.util.logging.Logger;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -72,6 +73,24 @@ public interface NoteRepository extends JpaRepository<Note, String> {
             @Param("user") User user,
             @Param("language") Language language,
             @Param("title") String title);
+
+    /**
+     * Find notes due for review (nextReviewAt <= now), ordered oldest-due-first.
+     */
+    @Query("SELECT n FROM Note n WHERE n.user = :user AND n.nextReviewAt <= :now ORDER BY n.nextReviewAt ASC")
+    List<Note> findDueForReview(@Param("user") User user, @Param("now") LocalDateTime now, Pageable pageable);
+
+    /**
+     * Find notes due for review filtered by language.
+     */
+    @Query("SELECT n FROM Note n WHERE n.user = :user AND n.learningLanguage = :language AND n.nextReviewAt <= :now ORDER BY n.nextReviewAt ASC")
+    List<Note> findDueForReviewByLanguage(@Param("user") User user, @Param("language") Language language, @Param("now") LocalDateTime now, Pageable pageable);
+
+    /**
+     * Count notes due by end of a given datetime (for "due today" stat).
+     */
+    @Query("SELECT COUNT(n) FROM Note n WHERE n.user = :user AND n.nextReviewAt <= :endOfDay")
+    long countDueByEndOfDay(@Param("user") User user, @Param("endOfDay") LocalDateTime endOfDay);
 
     /**
      * Find notes by tag (category + value).

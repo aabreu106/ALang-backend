@@ -2,6 +2,9 @@ package com.alang.service;
 
 import com.alang.dto.review.ReviewQueueResponse;
 import com.alang.dto.review.ReviewSubmissionRequest;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * Spaced repetition review service (Anki-style).
@@ -60,7 +63,7 @@ public interface ReviewService {
      *
      * @param currentInterval Current interval in days
      * @param easeFactor Current ease factor
-     * @param quality Quality rating (1-5)
+     * @param quality Quality rating (1-4)
      * @return Next interval in days
      */
     int calculateNextInterval(int currentInterval, double easeFactor, int quality);
@@ -69,7 +72,7 @@ public interface ReviewService {
      * Update ease factor based on quality.
      *
      * @param currentEaseFactor Current ease factor
-     * @param quality Quality rating (1-5)
+     * @param quality Quality rating (1-4)
      * @return Updated ease factor
      */
     double updateEaseFactor(double currentEaseFactor, int quality);
@@ -94,14 +97,14 @@ public interface ReviewService {
     /**
      * Review statistics DTO.
      */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
     class ReviewStats {
         private int totalNotes;
         private int reviewedToday;
         private int dueToday;
-        private int dueThisWeek;
         private double averageRetention; // % of reviews with quality >= 4
         private int streakDays;
-
-        // Getters/setters omitted for brevity
     }
 }

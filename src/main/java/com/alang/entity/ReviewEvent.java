@@ -29,7 +29,7 @@ public class ReviewEvent {
     private Note note;
 
     /**
-     * Quality of recall (1-5 scale, like Anki)
+     * Quality of recall (1-4 scale, like Anki)
      * 1 = completely forgot
      * 2 = barely remembered (after seeing answer)
      * 3 = remembered with effort

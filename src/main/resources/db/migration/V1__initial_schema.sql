@@ -57,7 +57,7 @@ CREATE TABLE notes (
     review_count          INTEGER          DEFAULT 0,
     last_reviewed_at      TIMESTAMP,
     next_review_at        TIMESTAMP,
-    ease_factor           DOUBLE PRECISION DEFAULT 2.5,
+    ease_factor           DOUBLE PRECISION DEFAULT 2.0,
     interval_days         INTEGER          DEFAULT 1,
     created_at            TIMESTAMP        NOT NULL,
     updated_at            TIMESTAMP        NOT NULL
@@ -119,7 +119,7 @@ CREATE TABLE chat_sessions (
     title                  VARCHAR(255),         -- optional user-supplied label
     created_at             TIMESTAMP      NOT NULL,
     updated_at             TIMESTAMP      NOT NULL,
-    closed_at              TIMESTAMP              -- set when status transitions to 'closed'
+    closed_at              TIMESTAMP,             -- set when status transitions to 'closed'
     note_created           BOOLEAN        NOT NULL DEFAULT FALSE
 );
 
@@ -149,7 +149,7 @@ CREATE TABLE review_events (
     id                     VARCHAR(255) PRIMARY KEY,
     user_id                VARCHAR(255) NOT NULL REFERENCES users(id),
     note_id                VARCHAR(255) NOT NULL REFERENCES notes(id),
-    quality                INTEGER      NOT NULL,  -- 1-5 recall rating, similar to Anki's system of easy, medium, hard, etc.
+    quality                INTEGER      NOT NULL,  -- 1-4 recall rating, similar to Anki's system of easy, medium, hard, etc.
     time_spent_seconds     INTEGER,
     previous_interval_days INTEGER,
     next_interval_days     INTEGER,
