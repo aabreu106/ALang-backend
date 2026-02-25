@@ -173,7 +173,7 @@ Anki-style review system with SM-2 algorithm.
 **Flow:**
 1. User opens app, calls `GET /review/queue`
 2. Backend returns notes where `nextReviewAt <= now`
-3. User reviews note, rates quality (1-5)
+3. User reviews note, rates quality (1-4)
 4. Backend calculates next interval using SM-2
 5. Updates `nextReviewAt`, `easeFactor`, `intervalDays`
 
@@ -238,7 +238,7 @@ DELETE /notes/{id}           # Delete note
 ### Review
 ```
 GET  /review/queue           # Get notes due for review
-POST /notes/reviewed         # Submit review result (quality 1-5)
+POST /notes/reviewed         # Submit review result (quality 1-4)
 ```
 
 ### Meta
@@ -278,7 +278,7 @@ GET /meta/starter-prompts    # Get example questions
 
 **ReviewEvent**
 - Review history (for analytics)
-- Quality ratings (1-5)
+- Quality ratings (1-4)
 - Used for SM-2 algorithm tuning
 
 ## 🚀 Getting Started

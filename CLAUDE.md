@@ -12,7 +12,7 @@ ALang is language-agnostic: it is designed for speakers of **any** language to l
 
 - **Frontend NEVER talks directly to the LLM.** All LLM interaction is centralized in `LLMService`.
 - **No controller should ever call an LLM directly.** Controllers are thin HTTP adapters that delegate to services.
-- **Chat history is summarized, not stored raw.** Recent messages have a TTL and are condensed into `ConversationSummary` records. Raw messages are deleted after summarization.
+- **Chat history is session-scoped.** Recent messages have a TTL and are deleted after the session ends. Notes serve as the long-term memory — they are injected as context in future LLM calls instead of raw conversation history.
 - **Token usage must be controlled.** Model selection (cheap vs premium) is based on intent, depth, and user tier. Token budgets are enforced per-user.
 - **Notes are auto-extracted from chat responses**, not manually created by users. Users can edit them afterward.
 
@@ -38,7 +38,7 @@ src/main/java/com/alang/
   exception/     Custom exceptions + GlobalExceptionHandler
 ```
 
-Key service: `LLMService` is the ONLY place that calls external LLM APIs. `ChatService` orchestrates the flow (message → LLM reply → note extraction → summarization check).
+Key service: `LLMService` is the ONLY place that calls external LLM APIs. `ChatService` orchestrates the flow (message → LLM reply → note extraction).
 
 ## API Endpoints (v1)
 
@@ -53,7 +53,7 @@ GET  /meta/languages       GET  /meta/starter-prompts
 
 ## Current Status
 
-Week 1 complete. Week 2 (LLM Integration) is next.
+Weeks 1–4 complete. Week 5 (Production Readiness) is next.
 
 ---
 
@@ -122,48 +122,29 @@ Goal: Generate a note froma chat session/conversation.
    - [x] Wire note creation into chat flow (ChatService calls NoteService after extraction)
    - [x] Wire up `NoteController` endpoints
 
-### Week 4 — Conversation Summarization
+### ~~Week 4 — Conversation Summarization~~ (Skipped)
 
-Goal: Old messages are condensed into summaries, keeping context costs low.
+Notes extracted per session serve as long-term LLM context. Raw messages expire via TTL. No summarization infrastructure needed.
 
-1. **Summarization logic**
-   - [ ] Implement `LLMServiceImpl.generateSummary()` (send recent messages, get condensed summary)
-   - [ ] Design summarization prompt (focus on what user learned, struggled with)
-   - [ ] Extract topic tags from summary
-
-2. **Summarization triggers**
-   - [ ] Implement `ChatServiceImpl.shouldTriggerSummarization()` (message count threshold OR token count threshold)
-   - [ ] Call summarization after sendMessage when threshold met
-
-3. **Context assembly**
-   - [ ] Load recent `ConversationSummary` records when building LLM context
-   - [ ] Load recent `RecentMessage` records for immediate context
-   - [ ] Enforce token budget on assembled context (drop oldest summaries first)
-
-4. **Cleanup**
-   - [ ] Implement scheduled task to delete expired messages (`RecentMessage.expiresAt`)
-   - [ ] Delete old messages after successful summarization
-   - [ ] Log summarization events
-
-### Week 5 — Review System
+### Week 4 — Review System ✅
 
 Goal: Spaced repetition review working end-to-end.
 
-1. **Review service**
-   - [ ] Create `ReviewServiceImpl`
-   - [ ] Implement SM-2 algorithm (`calculateNextInterval`, `updateEaseFactor`)
-   - [ ] Unit test interval calculations across all quality ratings (1-5)
+1. **Review service** ✅
+   - [x] Create `ReviewServiceImpl`
+   - [x] Implement SM-2 algorithm (`calculateNextInterval`, `updateEaseFactor`)
+   - [x] Unit test interval calculations across all quality ratings (1-4)
 
-2. **Review endpoints**
-   - [ ] Implement `getReviewQueue()` (notes where `nextReviewAt <= now`, ordered by priority)
-   - [ ] Implement `submitReview()` (update note's interval/ease/nextReview, save ReviewEvent)
-   - [ ] Wire up `ReviewController`
+2. **Review endpoints** ✅
+   - [x] Implement `getReviewQueue()` (notes where `nextReviewAt <= now`, ordered by priority)
+   - [x] Implement `submitReview()` (update note's interval/ease/nextReview, save ReviewEvent)
+   - [x] Wire up `ReviewController`
 
-3. **Analytics**
-   - [ ] Implement `getReviewStats()` (total notes, reviewed today, due today, streak, retention rate)
-   - [ ] Wire POST /notes/reviewed endpoint in `NoteController`
+3. **Analytics** ✅
+   - [x] Implement `getReviewStats()` (total notes, reviewed today, due today, streak, retention rate)
+   - [x] Wire POST /review/reviewed endpoint in `ReviewController`
 
-### Week 6 — Production Readiness
+### Week 5 — Production Readiness
 
 Goal: Secure, observable, documented, deployable.
 

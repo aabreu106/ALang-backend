@@ -21,7 +21,7 @@ public class ReviewSubmissionRequest {
      *
      * This affects the next review interval (spaced repetition)
      */
-    private int quality; // 1-5
+    private int quality; // 1-4
 
     /**
      * Optional: Time spent reviewing (in seconds)
