@@ -94,7 +94,7 @@ public class ReviewServiceImpl implements ReviewService {
 
         note.setEaseFactor(newEaseFactor);
         note.setIntervalDays(newInterval);
-        note.setNextReviewAt(LocalDateTime.now().plusDays(newInterval));
+        note.setNextReviewAt(LocalDate.now().plusDays(newInterval).atStartOfDay());
         note.setLastReviewedAt(LocalDateTime.now());
         note.setReviewCount(note.getReviewCount() + 1);
         noteRepository.save(note);
@@ -163,7 +163,7 @@ public class ReviewServiceImpl implements ReviewService {
         int dueToday = (int) noteRepository.countDueByEndOfDay(user, endOfDay);
 
         Double avgQuality = reviewEventRepository.getAverageQuality(user);
-        double averageRetention = avgQuality != null ? (avgQuality / 5.0) * 100.0 : 0.0;
+        double averageRetention = avgQuality != null ? (avgQuality / 4.0) * 100.0 : 0.0;
 
         int streakDays = calculateStreak(user, now);
 

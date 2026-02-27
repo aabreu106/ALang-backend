@@ -6,6 +6,7 @@ import com.alang.dto.chat.ChatMessageResponse;
 import com.alang.dto.chat.CloseSessionRequest;
 import com.alang.dto.chat.CreateSessionRequest;
 import com.alang.dto.chat.NoteFromSessionRequest;
+import com.alang.dto.chat.SessionDetailResponse;
 import com.alang.dto.chat.SessionResponse;
 import com.alang.dto.note.NoteDto;
 
@@ -39,14 +40,13 @@ public interface ChatService {
     SessionResponse createSession(CreateSessionRequest request, String userId);
 
     /**
-     * List recent sessions for a user, optionally filtered by learning language.
+     * Get all active sessions for a user, including their full message history.
+     * Used to restore in-progress conversations when the app starts.
      *
-     * @param userId   Authenticated user ID
-     * @param language Optional language filter (e.g. "es"). Null returns all languages.
-     * @param limit    Maximum number of sessions to return
-     * @return List of session summaries, newest first
+     * @param userId Authenticated user ID
+     * @return List of active session details with messages, newest first
      */
-    List<SessionResponse> getSessions(String userId, String language, int limit);
+    List<SessionDetailResponse> getActiveSessions(String userId);
 
     /**
      * Process a chat message within a session.

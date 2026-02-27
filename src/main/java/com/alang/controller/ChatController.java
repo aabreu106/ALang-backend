@@ -1,11 +1,11 @@
 package com.alang.controller;
 
-import com.alang.dto.chat.ChatHistoryDto;
 import com.alang.dto.chat.ChatMessageRequest;
 import com.alang.dto.chat.ChatMessageResponse;
 import com.alang.dto.chat.CloseSessionRequest;
 import com.alang.dto.chat.CreateSessionRequest;
 import com.alang.dto.chat.NoteFromSessionRequest;
+import com.alang.dto.chat.SessionDetailResponse;
 import com.alang.dto.chat.SessionResponse;
 import com.alang.dto.note.NoteDto;
 import com.alang.service.ChatService;
@@ -49,16 +49,14 @@ public class ChatController {
     }
 
     /**
-     * GET /chat/sessions?language=es&limit=20
-     * List recent sessions for the authenticated user.
+     * GET /chat/sessions/active
+     * Get all active sessions for the authenticated user, each with their full message history.
      */
-    @GetMapping("/sessions")
-    public ResponseEntity<List<SessionResponse>> getSessions(
-            @RequestParam(required = false) String language,
-            @RequestParam(defaultValue = "20") int limit,
+    @GetMapping("/sessions/active")
+    public ResponseEntity<List<SessionDetailResponse>> getActiveSessions(
             @AuthenticationPrincipal String userId
     ) {
-        return ResponseEntity.ok(chatService.getSessions(userId, language, limit));
+        return ResponseEntity.ok(chatService.getActiveSessions(userId));
     }
 
     /**
@@ -134,18 +132,4 @@ public class ChatController {
         return ResponseEntity.ok(chatService.updateNoteFromSession(sessionId, noteId, request, userId));
     }
 
-    /**
-     * GET /chat/history?language=ja&limit=20
-     * Get conversation history (summaries + recent messages).
-     * TODO: Implement in Week 4
-     */
-    @GetMapping("/history")
-    public ResponseEntity<ChatHistoryDto> getHistory(
-            @RequestParam String language,
-            @RequestParam(defaultValue = "20") int limit,
-            @AuthenticationPrincipal String userId
-    ) {
-        ChatHistoryDto history = chatService.getHistory(userId, language, limit);
-        return ResponseEntity.ok(history);
-    }
 }

@@ -5,7 +5,9 @@ import com.alang.dto.chat.ChatMessageRequest;
 import com.alang.dto.chat.ChatMessageResponse;
 import com.alang.dto.chat.CloseSessionRequest;
 import com.alang.dto.chat.CreateSessionRequest;
+import com.alang.dto.chat.MessageDto;
 import com.alang.dto.chat.NoteFromSessionRequest;
+import com.alang.dto.chat.SessionDetailResponse;
 import com.alang.dto.chat.SessionResponse;
 import com.alang.dto.note.NoteDto;
 import com.alang.dto.note.UpdateNoteRequest;
@@ -28,7 +30,6 @@ import com.alang.service.PromptTemplates;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -75,23 +76,17 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
-    public List<SessionResponse> getSessions(String userId, String language, int limit) {
+    public List<SessionDetailResponse> getActiveSessions(String userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));
 
-        PageRequest pageRequest = PageRequest.of(0, limit);
-        List<ChatSession> sessions;
-
-        if (language != null && !language.isBlank()) {
-            Language lang = languageRepository.findById(language)
-                    .orElseThrow(() -> new IllegalArgumentException("Language not supported: " + language));
-            sessions = chatSessionRepository.findByUserAndLearningLanguageOrderByCreatedAtDesc(user, lang, pageRequest);
-        } else {
-            sessions = chatSessionRepository.findByUserOrderByCreatedAtDesc(user, pageRequest);
-        }
+        List<ChatSession> sessions = chatSessionRepository.findByUserAndStatusOrderByCreatedAtDesc(user, SessionStatus.active);
 
         return sessions.stream()
-                .map(s -> toSessionResponse(s, (int) recentMessageRepository.countBySession(s)))
+                .map(session -> {
+                    List<RecentMessage> messages = recentMessageRepository.findBySessionOrderByCreatedAtAsc(session);
+                    return toSessionDetailResponse(session, messages);
+                })
                 .toList();
     }
 
@@ -265,6 +260,7 @@ public class ChatServiceImpl implements ChatService {
         return toSessionResponse(saved, (int) recentMessageRepository.countBySession(saved));
     }
 
+
     // ---- Week 4 stubs ----
 
     @Override
@@ -291,6 +287,27 @@ public class ChatServiceImpl implements ChatService {
         return messages.stream()
                 .map(m -> Map.of("role", m.getRole().name(), "content", m.getContent()))
                 .toList();
+    }
+
+    private SessionDetailResponse toSessionDetailResponse(ChatSession session, List<RecentMessage> messages) {
+        SessionDetailResponse response = new SessionDetailResponse();
+        response.setId(session.getId());
+        response.setLearningLanguage(session.getLearningLanguage().getCode());
+        response.setTeachingLanguage(session.getTeachingLanguage().getCode());
+        response.setStatus(session.getStatus().name());
+        response.setTitle(session.getTitle());
+        response.setCreatedAt(session.getCreatedAt());
+        response.setUpdatedAt(session.getUpdatedAt());
+        response.setClosedAt(session.getClosedAt());
+        response.setNoteCreated(Boolean.TRUE.equals(session.getNoteCreated()));
+        response.setMessages(messages.stream().map(m -> {
+            MessageDto dto = new MessageDto();
+            dto.setRole(m.getRole().name());
+            dto.setContent(m.getContent());
+            dto.setCreatedAt(m.getCreatedAt());
+            return dto;
+        }).toList());
+        return response;
     }
 
     private SessionResponse toSessionResponse(ChatSession session, int messageCount) {
