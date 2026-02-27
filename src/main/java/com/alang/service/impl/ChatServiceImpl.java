@@ -9,6 +9,7 @@ import com.alang.dto.chat.MessageDto;
 import com.alang.dto.chat.NoteFromSessionRequest;
 import com.alang.dto.chat.SessionDetailResponse;
 import com.alang.dto.chat.SessionResponse;
+import com.alang.dto.chat.UpdateSessionTitleRequest;
 import com.alang.dto.note.NoteDto;
 import com.alang.dto.note.UpdateNoteRequest;
 import com.alang.entity.ChatSession;
@@ -260,6 +261,22 @@ public class ChatServiceImpl implements ChatService {
         return toSessionResponse(saved, (int) recentMessageRepository.countBySession(saved));
     }
 
+
+    @Override
+    @Transactional
+    public SessionResponse updateSessionTitle(String sessionId, UpdateSessionTitleRequest request, String userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException(userId));
+
+        ChatSession session = chatSessionRepository.findByIdAndUser(sessionId, user)
+                .orElseThrow(() -> new UnauthorizedException("Session not found or access denied"));
+
+        session.setTitle(request.getTitle());
+        ChatSession saved = chatSessionRepository.save(session);
+
+        log.info("Updated session title: sessionId={}, userId={}", sessionId, userId);
+        return toSessionResponse(saved, (int) recentMessageRepository.countBySession(saved));
+    }
 
     // ---- Week 4 stubs ----
 

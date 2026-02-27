@@ -8,6 +8,7 @@ import com.alang.dto.chat.CreateSessionRequest;
 import com.alang.dto.chat.NoteFromSessionRequest;
 import com.alang.dto.chat.SessionDetailResponse;
 import com.alang.dto.chat.SessionResponse;
+import com.alang.dto.chat.UpdateSessionTitleRequest;
 import com.alang.dto.note.NoteDto;
 
 import java.util.List;
@@ -105,6 +106,16 @@ public interface ChatService {
      * @return Updated session details (check noteCreated field when not force)
      */
     SessionResponse closeSession(String sessionId, CloseSessionRequest request, String userId);
+
+    /**
+     * Update the title of a chat session.
+     *
+     * @param sessionId Session to rename
+     * @param request   New title
+     * @param userId    Authenticated user ID
+     * @return Updated session details
+     */
+    SessionResponse updateSessionTitle(String sessionId, UpdateSessionTitleRequest request, String userId);
 
     /**
      * Get conversation history for a user in a specific language.

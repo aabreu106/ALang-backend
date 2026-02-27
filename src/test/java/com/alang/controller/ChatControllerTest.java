@@ -5,6 +5,7 @@ import com.alang.dto.chat.ChatMessageResponse;
 import com.alang.dto.chat.CloseSessionRequest;
 import com.alang.dto.chat.SessionDetailResponse;
 import com.alang.dto.chat.SessionResponse;
+import com.alang.dto.chat.UpdateSessionTitleRequest;
 import com.alang.service.ChatService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -124,6 +125,41 @@ class ChatControllerTest {
         chatController.closeSession("session-1", request, "user-1");
 
         verify(chatService).closeSession("session-1", request, "user-1");
+    }
+
+    // ---- updateSessionTitle ----
+
+    @Test
+    void updateSessionTitle_returnsOkWithUpdatedSession() {
+        UpdateSessionTitleRequest request = new UpdateSessionTitleRequest();
+        request.setTitle("My Japanese Session");
+
+        SessionResponse sessionResponse = new SessionResponse();
+        sessionResponse.setId("session-1");
+        sessionResponse.setTitle("My Japanese Session");
+
+        when(chatService.updateSessionTitle("session-1", request, "user-1")).thenReturn(sessionResponse);
+
+        var response = chatController.updateSessionTitle("session-1", request, "user-1");
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody().getTitle()).isEqualTo("My Japanese Session");
+        verify(chatService).updateSessionTitle("session-1", request, "user-1");
+    }
+
+    @Test
+    void updateSessionTitle_passesSessionIdAndUserIdToService() {
+        UpdateSessionTitleRequest request = new UpdateSessionTitleRequest();
+        request.setTitle("Korean Basics");
+
+        SessionResponse sessionResponse = new SessionResponse();
+        sessionResponse.setTitle("Korean Basics");
+
+        when(chatService.updateSessionTitle("session-42", request, "user-99")).thenReturn(sessionResponse);
+
+        chatController.updateSessionTitle("session-42", request, "user-99");
+
+        verify(chatService).updateSessionTitle("session-42", request, "user-99");
     }
 
     // ---- getActiveSessions ----

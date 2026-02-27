@@ -7,6 +7,7 @@ import com.alang.dto.chat.CreateSessionRequest;
 import com.alang.dto.chat.NoteFromSessionRequest;
 import com.alang.dto.chat.SessionDetailResponse;
 import com.alang.dto.chat.SessionResponse;
+import com.alang.dto.chat.UpdateSessionTitleRequest;
 import com.alang.dto.note.NoteDto;
 import com.alang.service.ChatService;
 import jakarta.validation.Valid;
@@ -111,6 +112,19 @@ public class ChatController {
         }
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(chatService.createNoteFromSession(sessionId, request, userId));
+    }
+
+    /**
+     * PATCH /chat/sessions/{sessionId}/title
+     * Update the title of a session.
+     */
+    @PatchMapping("/sessions/{sessionId}/title")
+    public ResponseEntity<SessionResponse> updateSessionTitle(
+            @PathVariable String sessionId,
+            @Valid @RequestBody UpdateSessionTitleRequest request,
+            @AuthenticationPrincipal String userId
+    ) {
+        return ResponseEntity.ok(chatService.updateSessionTitle(sessionId, request, userId));
     }
 
     /**

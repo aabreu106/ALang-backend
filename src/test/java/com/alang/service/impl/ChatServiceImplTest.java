@@ -7,6 +7,7 @@ import com.alang.dto.chat.CreateSessionRequest;
 import com.alang.dto.chat.NoteFromSessionRequest;
 import com.alang.dto.chat.SessionDetailResponse;
 import com.alang.dto.chat.SessionResponse;
+import com.alang.dto.chat.UpdateSessionTitleRequest;
 import com.alang.dto.chat.TokenUsageDto;
 import com.alang.dto.note.NoteDto;
 import com.alang.dto.note.UpdateNoteRequest;
@@ -596,6 +597,84 @@ class ChatServiceImplTest {
             assertThat(response.getStatus()).isEqualTo("closed");
             // note-created check must be skipped entirely when force=true
             verify(chatSessionRepository, never()).existsByIdAndUserAndNoteCreatedTrue(any(), any());
+        }
+    }
+
+    // ---- updateSessionTitle ----
+
+    @Nested
+    class UpdateSessionTitle {
+
+        @Test
+        void updateSessionTitle_throwsWhenUserNotFound() {
+            UpdateSessionTitleRequest request = new UpdateSessionTitleRequest();
+            request.setTitle("New Title");
+
+            when(userRepository.findById("missing")).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> chatService.updateSessionTitle("session-1", request, "missing"))
+                    .isInstanceOf(UserNotFoundException.class);
+        }
+
+        @Test
+        void updateSessionTitle_throwsWhenSessionNotFoundOrAccessDenied() {
+            UpdateSessionTitleRequest request = new UpdateSessionTitleRequest();
+            request.setTitle("New Title");
+
+            when(userRepository.findById("user-1")).thenReturn(Optional.of(testUser));
+            when(chatSessionRepository.findByIdAndUser("session-1", testUser))
+                    .thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> chatService.updateSessionTitle("session-1", request, "user-1"))
+                    .isInstanceOf(UnauthorizedException.class);
+        }
+
+        @Test
+        void updateSessionTitle_updatesAndReturnsTitleInResponse() {
+            UpdateSessionTitleRequest request = new UpdateSessionTitleRequest();
+            request.setTitle("Japanese Particles");
+
+            when(userRepository.findById("user-1")).thenReturn(Optional.of(testUser));
+            when(chatSessionRepository.findByIdAndUser("session-1", testUser))
+                    .thenReturn(Optional.of(activeSession));
+            when(chatSessionRepository.save(activeSession)).thenAnswer(inv -> {
+                ChatSession s = inv.getArgument(0);
+                s.setTitle("Japanese Particles");
+                return s;
+            });
+            when(recentMessageRepository.countBySession(activeSession)).thenReturn(4L);
+
+            SessionResponse response = chatService.updateSessionTitle("session-1", request, "user-1");
+
+            assertThat(response.getTitle()).isEqualTo("Japanese Particles");
+            assertThat(response.getId()).isEqualTo("session-1");
+            assertThat(response.getMessageCount()).isEqualTo(4);
+            assertThat(activeSession.getTitle()).isEqualTo("Japanese Particles");
+            verify(chatSessionRepository).save(activeSession);
+        }
+
+        @Test
+        void updateSessionTitle_worksOnClosedSession() {
+            ChatSession closedSession = new ChatSession();
+            closedSession.setId("session-1");
+            closedSession.setUser(testUser);
+            closedSession.setStatus(SessionStatus.closed);
+            closedSession.setTeachingLanguage(english);
+            closedSession.setLearningLanguage(japanese);
+
+            UpdateSessionTitleRequest request = new UpdateSessionTitleRequest();
+            request.setTitle("Finished Session");
+
+            when(userRepository.findById("user-1")).thenReturn(Optional.of(testUser));
+            when(chatSessionRepository.findByIdAndUser("session-1", testUser))
+                    .thenReturn(Optional.of(closedSession));
+            when(chatSessionRepository.save(closedSession)).thenReturn(closedSession);
+            when(recentMessageRepository.countBySession(closedSession)).thenReturn(10L);
+
+            SessionResponse response = chatService.updateSessionTitle("session-1", request, "user-1");
+
+            assertThat(response.getStatus()).isEqualTo("closed");
+            assertThat(closedSession.getTitle()).isEqualTo("Finished Session");
         }
     }
 
