@@ -2,6 +2,7 @@ package com.alang.repository;
 
 import com.alang.entity.ChatSession;
 import com.alang.entity.Language;
+import com.alang.entity.SessionStatus;
 import com.alang.entity.User;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -30,6 +31,11 @@ public interface ChatSessionRepository extends JpaRepository<ChatSession, String
      * Used as an authorization check before any session operation.
      */
     Optional<ChatSession> findByIdAndUser(String id, User user);
+
+    /**
+     * List all active sessions for a user, newest first.
+     */
+    List<ChatSession> findByUserAndStatusOrderByCreatedAtDesc(User user, SessionStatus status);
 
     /**
      * Check whether a note has been created from the given session (for this user).

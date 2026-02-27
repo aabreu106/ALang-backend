@@ -1,10 +1,11 @@
 package com.alang.controller;
 
-import com.alang.dto.chat.ChatHistoryDto;
 import com.alang.dto.chat.ChatMessageRequest;
 import com.alang.dto.chat.ChatMessageResponse;
 import com.alang.dto.chat.CloseSessionRequest;
+import com.alang.dto.chat.SessionDetailResponse;
 import com.alang.dto.chat.SessionResponse;
+import com.alang.dto.chat.UpdateSessionTitleRequest;
 import com.alang.service.ChatService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,7 +14,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 
-import java.util.Collections;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
@@ -126,29 +127,67 @@ class ChatControllerTest {
         verify(chatService).closeSession("session-1", request, "user-1");
     }
 
+    // ---- updateSessionTitle ----
+
     @Test
-    void getHistory_returnsOkWithHistory() {
-        ChatHistoryDto historyDto = new ChatHistoryDto();
-        historyDto.setLanguage("ja");
-        historyDto.setSummaries(Collections.emptyList());
-        historyDto.setRecentExchanges(Collections.emptyList());
+    void updateSessionTitle_returnsOkWithUpdatedSession() {
+        UpdateSessionTitleRequest request = new UpdateSessionTitleRequest();
+        request.setTitle("My Japanese Session");
 
-        when(chatService.getHistory("user-1", "ja", 20)).thenReturn(historyDto);
+        SessionResponse sessionResponse = new SessionResponse();
+        sessionResponse.setId("session-1");
+        sessionResponse.setTitle("My Japanese Session");
 
-        var response = chatController.getHistory("ja", 20, "user-1");
+        when(chatService.updateSessionTitle("session-1", request, "user-1")).thenReturn(sessionResponse);
+
+        var response = chatController.updateSessionTitle("session-1", request, "user-1");
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).isEqualTo(historyDto);
-        verify(chatService).getHistory("user-1", "ja", 20);
+        assertThat(response.getBody().getTitle()).isEqualTo("My Japanese Session");
+        verify(chatService).updateSessionTitle("session-1", request, "user-1");
     }
 
     @Test
-    void getHistory_passesCustomLimitToService() {
-        ChatHistoryDto historyDto = new ChatHistoryDto();
-        when(chatService.getHistory("user-1", "ko", 50)).thenReturn(historyDto);
+    void updateSessionTitle_passesSessionIdAndUserIdToService() {
+        UpdateSessionTitleRequest request = new UpdateSessionTitleRequest();
+        request.setTitle("Korean Basics");
 
-        chatController.getHistory("ko", 50, "user-1");
+        SessionResponse sessionResponse = new SessionResponse();
+        sessionResponse.setTitle("Korean Basics");
 
-        verify(chatService).getHistory("user-1", "ko", 50);
+        when(chatService.updateSessionTitle("session-42", request, "user-99")).thenReturn(sessionResponse);
+
+        chatController.updateSessionTitle("session-42", request, "user-99");
+
+        verify(chatService).updateSessionTitle("session-42", request, "user-99");
+    }
+
+    // ---- getActiveSessions ----
+
+    @Test
+    void getActiveSessions_returnsOkWithList() {
+        SessionDetailResponse session = new SessionDetailResponse();
+        session.setId("session-1");
+        session.setStatus("active");
+        session.setMessages(List.of());
+
+        when(chatService.getActiveSessions("user-1")).thenReturn(List.of(session));
+
+        var response = chatController.getActiveSessions("user-1");
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).hasSize(1);
+        assertThat(response.getBody().get(0).getId()).isEqualTo("session-1");
+        verify(chatService).getActiveSessions("user-1");
+    }
+
+    @Test
+    void getActiveSessions_returnsEmptyList_whenNoActiveSessions() {
+        when(chatService.getActiveSessions("user-1")).thenReturn(List.of());
+
+        var response = chatController.getActiveSessions("user-1");
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isEmpty();
     }
 }

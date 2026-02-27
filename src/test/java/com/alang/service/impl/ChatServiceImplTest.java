@@ -5,7 +5,9 @@ import com.alang.dto.chat.ChatMessageResponse;
 import com.alang.dto.chat.CloseSessionRequest;
 import com.alang.dto.chat.CreateSessionRequest;
 import com.alang.dto.chat.NoteFromSessionRequest;
+import com.alang.dto.chat.SessionDetailResponse;
 import com.alang.dto.chat.SessionResponse;
+import com.alang.dto.chat.UpdateSessionTitleRequest;
 import com.alang.dto.chat.TokenUsageDto;
 import com.alang.dto.note.NoteDto;
 import com.alang.dto.note.UpdateNoteRequest;
@@ -34,7 +36,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Optional;
@@ -174,58 +175,50 @@ class ChatServiceImplTest {
         }
     }
 
-    // ---- getSessions ----
+    // ---- getActiveSessions ----
 
     @Nested
-    class GetSessions {
+    class GetActiveSessions {
 
         @Test
-        void getSessions_returnsAllSessionsWhenNoLanguageFilter() {
-            when(userRepository.findById("user-1")).thenReturn(Optional.of(testUser));
-            when(chatSessionRepository.findByUserOrderByCreatedAtDesc(eq(testUser), any(Pageable.class)))
-                    .thenReturn(List.of(activeSession));
-            when(recentMessageRepository.countBySession(activeSession)).thenReturn(5L);
+        void getActiveSessions_returnsSessionsWithMessages() {
+            RecentMessage msg = new RecentMessage();
+            msg.setRole(RoleType.user);
+            msg.setContent("What is は?");
 
-            List<SessionResponse> responses = chatService.getSessions("user-1", null, 10);
+            when(userRepository.findById("user-1")).thenReturn(Optional.of(testUser));
+            when(chatSessionRepository.findByUserAndStatusOrderByCreatedAtDesc(testUser, SessionStatus.active))
+                    .thenReturn(List.of(activeSession));
+            when(recentMessageRepository.findBySessionOrderByCreatedAtAsc(activeSession))
+                    .thenReturn(List.of(msg));
+
+            List<SessionDetailResponse> responses = chatService.getActiveSessions("user-1");
 
             assertThat(responses).hasSize(1);
             assertThat(responses.get(0).getId()).isEqualTo("session-1");
-            assertThat(responses.get(0).getMessageCount()).isEqualTo(5);
-        }
-
-        @Test
-        void getSessions_returnsFilteredSessionsByLanguage() {
-            when(userRepository.findById("user-1")).thenReturn(Optional.of(testUser));
-            when(languageRepository.findById("ja")).thenReturn(Optional.of(japanese));
-            when(chatSessionRepository.findByUserAndLearningLanguageOrderByCreatedAtDesc(
-                    eq(testUser), eq(japanese), any(Pageable.class)))
-                    .thenReturn(List.of(activeSession));
-            when(recentMessageRepository.countBySession(activeSession)).thenReturn(3L);
-
-            List<SessionResponse> responses = chatService.getSessions("user-1", "ja", 10);
-
-            assertThat(responses).hasSize(1);
+            assertThat(responses.get(0).getStatus()).isEqualTo("active");
             assertThat(responses.get(0).getLearningLanguage()).isEqualTo("ja");
-            verify(chatSessionRepository).findByUserAndLearningLanguageOrderByCreatedAtDesc(
-                    eq(testUser), eq(japanese), any(Pageable.class));
+            assertThat(responses.get(0).getMessages()).hasSize(1);
+            assertThat(responses.get(0).getMessages().get(0).getContent()).isEqualTo("What is は?");
         }
 
         @Test
-        void getSessions_throwsWhenUserNotFound() {
+        void getActiveSessions_returnsEmptyList_whenNoActiveSessions() {
+            when(userRepository.findById("user-1")).thenReturn(Optional.of(testUser));
+            when(chatSessionRepository.findByUserAndStatusOrderByCreatedAtDesc(testUser, SessionStatus.active))
+                    .thenReturn(List.of());
+
+            List<SessionDetailResponse> responses = chatService.getActiveSessions("user-1");
+
+            assertThat(responses).isEmpty();
+        }
+
+        @Test
+        void getActiveSessions_throwsWhenUserNotFound() {
             when(userRepository.findById("missing")).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> chatService.getSessions("missing", null, 10))
+            assertThatThrownBy(() -> chatService.getActiveSessions("missing"))
                     .isInstanceOf(UserNotFoundException.class);
-        }
-
-        @Test
-        void getSessions_throwsWhenFilterLanguageNotFound() {
-            when(userRepository.findById("user-1")).thenReturn(Optional.of(testUser));
-            when(languageRepository.findById("xx")).thenReturn(Optional.empty());
-
-            assertThatThrownBy(() -> chatService.getSessions("user-1", "xx", 10))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("Language not supported");
         }
     }
 
@@ -604,6 +597,84 @@ class ChatServiceImplTest {
             assertThat(response.getStatus()).isEqualTo("closed");
             // note-created check must be skipped entirely when force=true
             verify(chatSessionRepository, never()).existsByIdAndUserAndNoteCreatedTrue(any(), any());
+        }
+    }
+
+    // ---- updateSessionTitle ----
+
+    @Nested
+    class UpdateSessionTitle {
+
+        @Test
+        void updateSessionTitle_throwsWhenUserNotFound() {
+            UpdateSessionTitleRequest request = new UpdateSessionTitleRequest();
+            request.setTitle("New Title");
+
+            when(userRepository.findById("missing")).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> chatService.updateSessionTitle("session-1", request, "missing"))
+                    .isInstanceOf(UserNotFoundException.class);
+        }
+
+        @Test
+        void updateSessionTitle_throwsWhenSessionNotFoundOrAccessDenied() {
+            UpdateSessionTitleRequest request = new UpdateSessionTitleRequest();
+            request.setTitle("New Title");
+
+            when(userRepository.findById("user-1")).thenReturn(Optional.of(testUser));
+            when(chatSessionRepository.findByIdAndUser("session-1", testUser))
+                    .thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> chatService.updateSessionTitle("session-1", request, "user-1"))
+                    .isInstanceOf(UnauthorizedException.class);
+        }
+
+        @Test
+        void updateSessionTitle_updatesAndReturnsTitleInResponse() {
+            UpdateSessionTitleRequest request = new UpdateSessionTitleRequest();
+            request.setTitle("Japanese Particles");
+
+            when(userRepository.findById("user-1")).thenReturn(Optional.of(testUser));
+            when(chatSessionRepository.findByIdAndUser("session-1", testUser))
+                    .thenReturn(Optional.of(activeSession));
+            when(chatSessionRepository.save(activeSession)).thenAnswer(inv -> {
+                ChatSession s = inv.getArgument(0);
+                s.setTitle("Japanese Particles");
+                return s;
+            });
+            when(recentMessageRepository.countBySession(activeSession)).thenReturn(4L);
+
+            SessionResponse response = chatService.updateSessionTitle("session-1", request, "user-1");
+
+            assertThat(response.getTitle()).isEqualTo("Japanese Particles");
+            assertThat(response.getId()).isEqualTo("session-1");
+            assertThat(response.getMessageCount()).isEqualTo(4);
+            assertThat(activeSession.getTitle()).isEqualTo("Japanese Particles");
+            verify(chatSessionRepository).save(activeSession);
+        }
+
+        @Test
+        void updateSessionTitle_worksOnClosedSession() {
+            ChatSession closedSession = new ChatSession();
+            closedSession.setId("session-1");
+            closedSession.setUser(testUser);
+            closedSession.setStatus(SessionStatus.closed);
+            closedSession.setTeachingLanguage(english);
+            closedSession.setLearningLanguage(japanese);
+
+            UpdateSessionTitleRequest request = new UpdateSessionTitleRequest();
+            request.setTitle("Finished Session");
+
+            when(userRepository.findById("user-1")).thenReturn(Optional.of(testUser));
+            when(chatSessionRepository.findByIdAndUser("session-1", testUser))
+                    .thenReturn(Optional.of(closedSession));
+            when(chatSessionRepository.save(closedSession)).thenReturn(closedSession);
+            when(recentMessageRepository.countBySession(closedSession)).thenReturn(10L);
+
+            SessionResponse response = chatService.updateSessionTitle("session-1", request, "user-1");
+
+            assertThat(response.getStatus()).isEqualTo("closed");
+            assertThat(closedSession.getTitle()).isEqualTo("Finished Session");
         }
     }
 

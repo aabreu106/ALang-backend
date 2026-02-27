@@ -6,7 +6,9 @@ import com.alang.dto.chat.ChatMessageResponse;
 import com.alang.dto.chat.CloseSessionRequest;
 import com.alang.dto.chat.CreateSessionRequest;
 import com.alang.dto.chat.NoteFromSessionRequest;
+import com.alang.dto.chat.SessionDetailResponse;
 import com.alang.dto.chat.SessionResponse;
+import com.alang.dto.chat.UpdateSessionTitleRequest;
 import com.alang.dto.note.NoteDto;
 
 import java.util.List;
@@ -39,14 +41,13 @@ public interface ChatService {
     SessionResponse createSession(CreateSessionRequest request, String userId);
 
     /**
-     * List recent sessions for a user, optionally filtered by learning language.
+     * Get all active sessions for a user, including their full message history.
+     * Used to restore in-progress conversations when the app starts.
      *
-     * @param userId   Authenticated user ID
-     * @param language Optional language filter (e.g. "es"). Null returns all languages.
-     * @param limit    Maximum number of sessions to return
-     * @return List of session summaries, newest first
+     * @param userId Authenticated user ID
+     * @return List of active session details with messages, newest first
      */
-    List<SessionResponse> getSessions(String userId, String language, int limit);
+    List<SessionDetailResponse> getActiveSessions(String userId);
 
     /**
      * Process a chat message within a session.
@@ -105,6 +106,16 @@ public interface ChatService {
      * @return Updated session details (check noteCreated field when not force)
      */
     SessionResponse closeSession(String sessionId, CloseSessionRequest request, String userId);
+
+    /**
+     * Update the title of a chat session.
+     *
+     * @param sessionId Session to rename
+     * @param request   New title
+     * @param userId    Authenticated user ID
+     * @return Updated session details
+     */
+    SessionResponse updateSessionTitle(String sessionId, UpdateSessionTitleRequest request, String userId);
 
     /**
      * Get conversation history for a user in a specific language.
