@@ -75,7 +75,7 @@ public interface NoteRepository extends JpaRepository<Note, String> {
             @Param("title") String title);
 
     /**
-     * Find notes due for review (nextReviewAt <= now), ordered oldest-due-first.
+     * Find all notes due for review (nextReviewAt <= now), ordered oldest-due-first.
      */
     @Query("SELECT n FROM Note n WHERE n.user = :user AND n.nextReviewAt <= :now ORDER BY n.nextReviewAt ASC")
     List<Note> findDueForReview(@Param("user") User user, @Param("now") LocalDateTime now, Pageable pageable);

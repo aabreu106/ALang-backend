@@ -187,6 +187,7 @@ public class PromptTemplates {
             Type-specific "structured" fields:
             - vocab:     { "word": "...", "reading": "...", "meaning": "...", "partOfSpeech": "noun|verb|adjective|adverb|particle|other", "exampleSentences": ["..."], "commonMistakes": ["..."] }
             - grammar:   { "pattern": "...", "meaning": "...", "explanation": "...", "formality": "casual|polite|formal", "exampleSentences": ["..."], "commonMistakes": ["..."] }
+            - phrase:    { "phrase": "...", "meaning": "...", "explanation": "...", "formality": "casual|polite|formal", "exampleSentences": ["..."], "commonMistakes": ["..."] }
             - exception: { "rule": "...", "exception": "...", "explanation": "...", "exampleSentences": ["..."] }
             - other:     use any relevant key-value pairs
 
@@ -197,13 +198,13 @@ public class PromptTemplates {
             - "function": contrast, cause, condition, request, permission, comparison, negation, sequence, description, greeting
 
             Rules:
-            - "type" must be exactly one of: vocab, grammar, exception, other.
+            - "type" must be exactly one of: vocab, grammar, phrase, exception, other.
             - "title" is the target-language word, phrase, or grammar point name. Keep it short (under 60 characters).
             - "summary" is 1-2 sentences — a quick reminder of the concept.
             - "content" is the full explanation with examples. Match the quality of a good tutor explanation.
             - "structured" is required. Always include it, even if some fields are empty strings or empty arrays.
             - "tags" is an array of 1-4 tags using the categories and values listed above. Lowercase values.
-            - Be sure to include any example sentences from the assistant's explanations in the "exampleSentences" field, even if they are simple or repetitive. Examples are crucial for learning.
+            - Be sure to include all example sentences from the assistant's explanations in the "exampleSentences" field, even if they are simple or repetitive. Examples are crucial for learning.
             - Write "summary" and "content" in the learner's native language, with inline target-language examples.
             - Return ONLY the JSON object. No surrounding text, no markdown code fences.
             """;
