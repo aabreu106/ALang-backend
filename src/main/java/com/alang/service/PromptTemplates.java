@@ -176,7 +176,7 @@ public class PromptTemplates {
 
             Respond with ONLY valid JSON matching this exact schema (no other text, no markdown fences):
             {
-              "type": "vocab | grammar | exception | other",
+              "type": "vocab | grammar | phrase | exception | other",
               "title": "short title (under 60 characters)",
               "summary": "1-2 sentence explanation in the learner's native language",
               "content": "fuller explanation with examples, in the learner's native language",
@@ -185,10 +185,10 @@ public class PromptTemplates {
             }
 
             Type-specific "structured" fields:
-            - vocab:     { "word": "...", "reading": "...", "meaning": "...", "partOfSpeech": "noun|verb|adjective|adverb|particle|other", "exampleSentences": ["..."], "commonMistakes": ["..."] }
-            - grammar:   { "pattern": "...", "meaning": "...", "explanation": "...", "formality": "casual|polite|formal", "exampleSentences": ["..."], "commonMistakes": ["..."] }
-            - phrase:    { "phrase": "...", "meaning": "...", "explanation": "...", "formality": "casual|polite|formal", "exampleSentences": ["..."], "commonMistakes": ["..."] }
-            - exception: { "rule": "...", "exception": "...", "explanation": "...", "exampleSentences": ["..."] }
+            - vocab:     { "word": "...", "reading": "...", "meaning": "...", "partOfSpeech": "noun|verb|adjective|adverb|particle|other", "exampleSentences": [{ "targetLanguageSentence": "...", "learningLanguageSentence": "..." }], "commonMistakes": ["..."] }
+            - grammar:   { "pattern": "...", "meaning": "...", "explanation": "...", "formality": "casual|polite|formal", "exampleSentences": [{ "targetLanguageSentence": "...", "learningLanguageSentence": "..." }], "commonMistakes": ["..."] }
+            - phrase:    { "phrase": "...", "meaning": "...", "explanation": "...", "formality": "casual|polite|formal", "exampleSentences": [{ "targetLanguageSentence": "...", "learningLanguageSentence": "..." }], "commonMistakes": ["..."] }
+            - exception: { "rule": "...", "exception": "...", "explanation": "...", "exampleSentences": [{ "targetLanguageSentence": "...", "learningLanguageSentence": "..." }] }
             - other:     use any relevant key-value pairs
 
             Tag categories and example values:
