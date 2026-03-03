@@ -239,7 +239,6 @@ This document tracks what needs to be implemented and in what order.
 ### Quality Metrics
 - Note confidence scores (avg)
 - Notes marked as userEdited (indicates quality issues)
-- Review retention rates
 
 ### Performance Metrics
 - LLM API latency (p50, p95, p99)

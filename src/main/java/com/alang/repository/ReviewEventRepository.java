@@ -4,8 +4,6 @@ import com.alang.entity.ReviewEvent;
 import com.alang.entity.User;
 import com.alang.entity.Note;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -16,7 +14,7 @@ import java.util.List;
  *
  * Used for:
  * 1. Tracking review history
- * 2. Analytics (retention rates, review frequency)
+ * 2. Analytics (review frequency)
  * 3. Algorithm tuning
  *
  * TODO: Add indexes on (userId, reviewedAt) for analytics queries
@@ -44,20 +42,7 @@ public interface ReviewEventRepository extends JpaRepository<ReviewEvent, String
      */
     List<ReviewEvent> findByUserAndReviewedAtBetween(User user, LocalDateTime start, LocalDateTime end);
 
-    /**
-     * Calculate average quality for a user (retention rate).
-     * Quality >= 4 is considered "good recall".
-     */
-    @Query("SELECT AVG(r.quality) FROM ReviewEvent r WHERE r.user = :user")
-    Double getAverageQuality(@Param("user") User user);
-
-    /**
-     * Count "good" reviews (quality >= 4) for retention rate.
-     */
-    @Query("SELECT COUNT(r) FROM ReviewEvent r WHERE r.user = :user AND r.quality >= 4")
-    long countGoodReviews(@Param("user") User user);
-
-    // TODO: Add more analytics queries
+// TODO: Add more analytics queries
     // - Reviews per day/week
     // - Average time spent per review
     // - Quality trends over time
