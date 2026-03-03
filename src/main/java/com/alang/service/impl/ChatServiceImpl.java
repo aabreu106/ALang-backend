@@ -22,6 +22,7 @@ import com.alang.exception.UnauthorizedException;
 import com.alang.exception.UserNotFoundException;
 import com.alang.repository.ChatSessionRepository;
 import com.alang.repository.LanguageRepository;
+import com.alang.repository.NoteRepository;
 import com.alang.repository.RecentMessageRepository;
 import com.alang.repository.UserRepository;
 import com.alang.service.ChatService;
@@ -46,6 +47,7 @@ public class ChatServiceImpl implements ChatService {
     private final NoteService noteService;
     private final UserRepository userRepository;
     private final LanguageRepository languageRepository;
+    private final NoteRepository noteRepository;
     private final RecentMessageRepository recentMessageRepository;
     private final ChatSessionRepository chatSessionRepository;
     private final ObjectMapper objectMapper;
@@ -181,6 +183,7 @@ public class ChatServiceImpl implements ChatService {
         NoteDto savedNote = noteService.createNote(generatedNote, userId);
 
         session.setNoteCreated(true);
+        session.setNote(noteRepository.getReferenceById(savedNote.getId()));
         chatSessionRepository.save(session);
 
         log.info("Note created from session: sessionId={}, noteId={}, userId={}, topic={}",
@@ -317,6 +320,7 @@ public class ChatServiceImpl implements ChatService {
         response.setUpdatedAt(session.getUpdatedAt());
         response.setClosedAt(session.getClosedAt());
         response.setNoteCreated(Boolean.TRUE.equals(session.getNoteCreated()));
+        response.setNoteId(session.getNote() != null ? session.getNote().getId() : null);
         response.setMessages(messages.stream().map(m -> {
             MessageDto dto = new MessageDto();
             dto.setRole(m.getRole().name());

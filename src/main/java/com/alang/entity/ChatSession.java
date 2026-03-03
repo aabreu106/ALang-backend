@@ -68,6 +68,14 @@ public class ChatSession {
     @Column(nullable = false)
     private Boolean noteCreated = false;
 
+    /**
+     * The note created from this session, if any.
+     * Set when the user triggers note creation via createNoteFromSession().
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "note_id")
+    private Note note;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

@@ -161,12 +161,9 @@ return response;
         int reviewedToday = (int) reviewEventRepository.countByUserAndReviewedAtBetween(user, startOfDay, now);
         int dueToday = (int) noteRepository.countDueByEndOfDay(user, endOfDay);
 
-        Double avgQuality = reviewEventRepository.getAverageQuality(user);
-        double averageRetention = avgQuality != null ? (avgQuality / 4.0) * 100.0 : 0.0;
-
         int streakDays = calculateStreak(user, now);
 
-        return new ReviewStats(totalNotes, reviewedToday, dueToday, averageRetention, streakDays);
+        return new ReviewStats(totalNotes, reviewedToday, dueToday, streakDays);
     }
 
     // Count consecutive days with at least one review, going backwards from today.

@@ -141,7 +141,7 @@ Goal: Spaced repetition review working end-to-end.
    - [x] Wire up `ReviewController`
 
 3. **Analytics** ✅
-   - [x] Implement `getReviewStats()` (total notes, reviewed today, due today, streak, retention rate)
+   - [x] Implement `getReviewStats()` (total notes, reviewed today, due today, streak)
    - [x] Wire POST /review/reviewed endpoint in `ReviewController`
 
 ### Week 5 — Production Readiness

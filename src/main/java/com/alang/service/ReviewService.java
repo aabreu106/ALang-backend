@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
  * - Calculate review schedules using spaced repetition algorithm
  * - Provide review queue (notes due for review)
  * - Process review submissions (update schedules based on recall quality)
- * - Analytics (review stats, retention rates)
+ * - Analytics (review stats)
  *
  * ALGORITHM:
  * Use SM-2 or Anki algorithm for spaced repetition.
@@ -83,8 +83,7 @@ public interface ReviewService {
      * Stats:
      * - Total notes
      * - Notes reviewed today
-     * - Average retention rate
-     * - Notes due today/this week
+     *- Notes due today/this week
      * - Review streak (days in a row)
      *
      * TODO: Implement analytics dashboard
@@ -104,7 +103,6 @@ public interface ReviewService {
         private int totalNotes;
         private int reviewedToday;
         private int dueToday;
-        private double averageRetention; // % of reviews with quality >= 4
         private int streakDays;
     }
 }
