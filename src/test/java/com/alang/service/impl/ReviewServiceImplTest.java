@@ -377,9 +377,10 @@ class ReviewServiceImplTest {
         void returnsCorrectTotals() {
             when(userRepository.findById("user-1")).thenReturn(Optional.of(user));
             when(noteRepository.countByUser(user)).thenReturn(15L);
-            when(reviewEventRepository.countByUserAndReviewedAtBetween(eq(user), any(), any())).thenReturn(5L);
             when(noteRepository.countDueByEndOfDay(eq(user), any())).thenReturn(3L);
-            when(reviewEventRepository.getAverageQuality(user)).thenReturn(4.0);
+            // First call: reviewedToday stat (5). Second call: streak check today (0 → no loop).
+            when(reviewEventRepository.countByUserAndReviewedAtBetween(eq(user), any(), any()))
+                    .thenReturn(5L, 0L);
 
             ReviewStats stats = service.getReviewStats("user-1");
 
@@ -389,39 +390,10 @@ class ReviewServiceImplTest {
         }
 
         @Test
-        void averageRetentionCalculatedFromAverageQuality() {
-            when(userRepository.findById("user-1")).thenReturn(Optional.of(user));
-            when(noteRepository.countByUser(user)).thenReturn(10L);
-            when(reviewEventRepository.countByUserAndReviewedAtBetween(eq(user), any(), any())).thenReturn(0L);
-            when(noteRepository.countDueByEndOfDay(eq(user), any())).thenReturn(0L);
-            when(reviewEventRepository.getAverageQuality(user)).thenReturn(4.0);
-
-            ReviewStats stats = service.getReviewStats("user-1");
-
-            // (4.0 / 5.0) * 100 = 80.0
-            assertThat(stats.getAverageRetention()).isCloseTo(80.0, within(0.01));
-        }
-
-        @Test
-        void averageRetentionIsZeroWhenNoReviews() {
-            when(userRepository.findById("user-1")).thenReturn(Optional.of(user));
-            when(noteRepository.countByUser(user)).thenReturn(5L);
-            when(reviewEventRepository.countByUserAndReviewedAtBetween(eq(user), any(), any())).thenReturn(0L);
-            when(noteRepository.countDueByEndOfDay(eq(user), any())).thenReturn(0L);
-            when(reviewEventRepository.getAverageQuality(user)).thenReturn(null);
-
-            ReviewStats stats = service.getReviewStats("user-1");
-
-            assertThat(stats.getAverageRetention()).isCloseTo(0.0, within(0.01));
-        }
-
-        @Test
         void streakIsZeroWhenNeverReviewed() {
             when(userRepository.findById("user-1")).thenReturn(Optional.of(user));
             when(noteRepository.countByUser(user)).thenReturn(5L);
             when(noteRepository.countDueByEndOfDay(eq(user), any())).thenReturn(0L);
-            when(reviewEventRepository.getAverageQuality(user)).thenReturn(null);
-            // All date window queries return 0
             when(reviewEventRepository.countByUserAndReviewedAtBetween(eq(user), any(), any())).thenReturn(0L);
 
             ReviewStats stats = service.getReviewStats("user-1");
@@ -434,13 +406,16 @@ class ReviewServiceImplTest {
             when(userRepository.findById("user-1")).thenReturn(Optional.of(user));
             when(noteRepository.countByUser(user)).thenReturn(5L);
             when(noteRepository.countDueByEndOfDay(eq(user), any())).thenReturn(0L);
-            when(reviewEventRepository.getAverageQuality(user)).thenReturn(3.0);
 
-            // countByUserAndReviewedAtBetween is called many times for streak calculation.
-            // Simulate reviews today and 2 days prior, but not 3 days ago.
-            // We return 1 for the first 3 calls (today, yesterday, day before), then 0.
+            // countByUserAndReviewedAtBetween call order:
+            //   1. getReviewStats: reviewedToday stat         → 1L
+            //   2. calculateStreak: reviewed-today check      → 1L (reviewed today = true, no decrement)
+            //   3. calculateStreak loop, today                → 1L, streak = 1
+            //   4. calculateStreak loop, yesterday            → 1L, streak = 2
+            //   5. calculateStreak loop, 2 days ago           → 1L, streak = 3
+            //   6. calculateStreak loop, 3 days ago           → 0L, stop
             when(reviewEventRepository.countByUserAndReviewedAtBetween(eq(user), any(), any()))
-                    .thenReturn(1L, 1L, 1L, 0L);
+                    .thenReturn(1L, 1L, 1L, 1L, 1L, 0L);
 
             ReviewStats stats = service.getReviewStats("user-1");
 

@@ -7,8 +7,8 @@ import java.util.List;
 
 /**
  * Full session details including conversation messages.
- * Returned by GET /chat/session/{sessionId} so the frontend can restore
- * an active session after the user restarts the app.
+ * Returned by GET /chat/sessions/active so the frontend can restore
+ * the active sessions after the user restarts the app.
  */
 @Data
 public class SessionDetailResponse {
@@ -21,5 +21,6 @@ public class SessionDetailResponse {
     private LocalDateTime updatedAt;
     private LocalDateTime closedAt;
     private boolean noteCreated;
+    private String noteId;           // null until a note is created from this session
     private List<MessageDto> messages;
 }

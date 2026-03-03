@@ -103,7 +103,6 @@ public interface ReviewService {
         private int totalNotes;
         private int reviewedToday;
         private int dueToday;
-        private double averageRetention; // % of reviews with quality >= 4
         private int streakDays;
     }
 }
