@@ -30,9 +30,4 @@ public class ReviewQueueResponse {
      */
     private int dueTodayCount;
 
-    /**
-     * Estimated review time in minutes (optional)
-     * Based on average time per note
-     */
-    private Integer estimatedMinutes;
 }

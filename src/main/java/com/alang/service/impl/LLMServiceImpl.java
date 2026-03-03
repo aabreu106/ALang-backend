@@ -59,7 +59,7 @@ public class LLMServiceImpl implements LLMService {
 
     private static final int MAX_CONTEXT_SUMMARIES = 3;
     private static final int MAX_CONTEXT_MESSAGES = 10;
-    private static final Set<String> VALID_NOTE_TYPES = Set.of("vocab", "grammar", "exception", "other");
+    private static final Set<String> VALID_NOTE_TYPES = Set.of("vocab", "grammar", "phrase", "exception", "other");
     private static final int MAX_TITLE_LENGTH = 60;
 
     // The message array sent to the LLM looks like: [system prompt] → [summary context] → [recent msg 1] → [recent msg 2] → ... → [new user message]

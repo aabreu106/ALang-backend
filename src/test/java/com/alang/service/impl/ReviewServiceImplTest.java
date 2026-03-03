@@ -200,7 +200,6 @@ class ReviewServiceImplTest {
             assertThat(response.getDueNotes()).hasSize(1);
             assertThat(response.getTotalNotes()).isEqualTo(10);
             assertThat(response.getDueTodayCount()).isEqualTo(3);
-            assertThat(response.getEstimatedMinutes()).isEqualTo(2); // 1 note * 2 min
         }
 
         @Test
@@ -230,20 +229,6 @@ class ReviewServiceImplTest {
             ReviewQueueResponse response = service.getReviewQueue("user-1", "xx", 20);
 
             assertThat(response.getDueNotes()).isEmpty();
-            assertThat(response.getEstimatedMinutes()).isEqualTo(0);
-        }
-
-        @Test
-        void estimatedMinutesIsNoteDurationTimesTwo() {
-            List<Note> notes = List.of(buildNote("n1", 1, 2.5), buildNote("n2", 1, 2.5), buildNote("n3", 1, 2.5));
-            when(userRepository.findById("user-1")).thenReturn(Optional.of(user));
-            when(noteRepository.findDueForReview(eq(user), any(), any())).thenReturn(notes);
-            when(noteRepository.countByUser(user)).thenReturn(3L);
-            when(noteRepository.countDueByEndOfDay(eq(user), any())).thenReturn(3L);
-
-            ReviewQueueResponse response = service.getReviewQueue("user-1", null, 20);
-
-            assertThat(response.getEstimatedMinutes()).isEqualTo(6);
         }
     }
 

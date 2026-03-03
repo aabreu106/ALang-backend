@@ -60,8 +60,7 @@ public class ReviewServiceImpl implements ReviewService {
         response.setDueNotes(dueNotes.stream().map(this::toDto).toList());
         response.setTotalNotes((int) totalNotes);
         response.setDueTodayCount((int) dueToday);
-        response.setEstimatedMinutes(dueNotes.size() * 2); // ~2 min per note
-        return response;
+return response;
     }
 
     @Override
